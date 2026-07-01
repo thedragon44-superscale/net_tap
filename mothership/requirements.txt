@@ -8,3 +8,4 @@ websockets
 python-multipart
 requests
 pandas
+jinja2
