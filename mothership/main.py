@@ -974,19 +974,18 @@ def download_file(filename: str, user_session: str = Cookie(None)):
 @app.get("/api/wiretap/view")
 def view_telemetry():
     try:
-        # Connect to your Neon database
         conn = psycopg2.connect(os.getenv("DATABASE_URL"))
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Fetch the last 10 entries
-        cur.execute("SELECT * FROM wiretap_data ORDER BY created_at DESC LIMIT 10;")
+        # Query the 'reports' table instead of 'wiretap_data'
+        # (Assuming your reports table has an 'id' column to sort by)
+        cur.execute("SELECT * FROM reports ORDER BY id DESC LIMIT 10;")
         records = cur.fetchall()
         
         cur.close()
         conn.close()
         
-        # Return the data as a readable JSON structure in your browser
-        return {"status": "success", "data": records}
+        return {"status": "success", "database_logs": records}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
