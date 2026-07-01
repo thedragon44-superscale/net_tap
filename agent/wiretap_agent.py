@@ -8,7 +8,8 @@ from sniffer import run_sniff
 load_dotenv()
 
 # The destination URL of your cloud server
-CLOUD_ENDPOINT = os.getenv("DRAGON_CLOUD_URL", "http://127.0.0.1:8000/api/wiretap/ingest")
+# The destination URL of your cloud server
+CLOUD_ENDPOINT = os.getenv("DRAGON_CLOUD_URL", "https://net-tap.onrender.com/api/wiretap/ingest")
 AGENT_SECRET_KEY = os.getenv("AGENT_SECRET_KEY", "dragon_production_key_999")
 USER_EMAIL = os.getenv("AGENT_USER_EMAIL", "edge_operative@system.local")
 
