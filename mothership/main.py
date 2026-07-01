@@ -970,3 +970,23 @@ def download_file(filename: str, user_session: str = Cookie(None)):
         return RedirectResponse(url=presigned_url)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Could not retrieve file from AWS.")
+
+@app.get("/api/wiretap/view")
+def view_telemetry():
+    try:
+        # Connect to your Neon database
+        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Fetch the last 10 entries
+        cur.execute("SELECT * FROM wiretap_data ORDER BY created_at DESC LIMIT 10;")
+        records = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        # Return the data as a readable JSON structure in your browser
+        return {"status": "success", "data": records}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
