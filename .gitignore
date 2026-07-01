@@ -1,0 +1,11 @@
+# Environments
+venv/
+.env
+
+# Cache and compiled files
+__pycache__/
+*.pyc
+
+# Local outputs
+outputs/
+*.json
