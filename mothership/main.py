@@ -19,7 +19,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    # The new column required to link desktop agents to web accounts
+    # The column required to link desktop agents to web accounts
     enterprise_api_key = Column(String, unique=True, index=True, nullable=True)
 
 Base.metadata.create_all(bind=engine)
@@ -59,12 +59,12 @@ def get_current_user(db: Session = Depends(get_db)):
 @app.get("/")
 async def serve_gateway(request: Request):
     """Serves the main login gateway."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 @app.get("/register")
 async def serve_register(request: Request):
     """Serves the registration page."""
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="register.html")
 
 @app.post("/register")
 async def process_register(request: Request, email: str = Form(...), password: str = Form(...)):
@@ -81,19 +81,22 @@ async def process_login(request: Request, email: str = Form(...), password: str 
 @app.get("/dashboard")
 async def serve_dashboard(request: Request):
     """Serves the main Enterprise Dashboard."""
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user_email": "operative@dragon.local", # Static mock for now
-        "user_tier": "enterprise",
-        "rating_stars": "⭐⭐⭐⭐⭐",
-        "rating_score": "5.0",
-        "history": []
-    })
+    return templates.TemplateResponse(
+        request=request, 
+        name="dashboard.html", 
+        context={
+            "user_email": "operative@dragon.local", # Static mock for now
+            "user_tier": "enterprise",
+            "rating_stars": "⭐⭐⭐⭐⭐",
+            "rating_score": "5.0",
+            "history": []
+        }
+    )
 
 @app.get("/profile")
 async def serve_profile(request: Request):
     """Serves the operator profile and API key generator."""
-    return templates.TemplateResponse("profile.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="profile.html")
 
 # =====================================================================
 # API ENDPOINTS (JSON BACKEND)
