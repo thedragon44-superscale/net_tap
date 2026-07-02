@@ -93,11 +93,11 @@ def init_db():
 def view_login(request: Request, user_session: str = Cookie(None), error: str = None):
     if user_session:
         return RedirectResponse(url="/dashboard", status_code=303)
-    return templates.TemplateResponse("index.html", {"request": request, "error_message": error})
+    return templates.TemplateResponse(request=request, name="index.html", context={"error_message": error})
 
 @app.get("/register", response_class=HTMLResponse)
 def view_register(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="register.html")
 
 @app.post("/register")
 def handle_register(email: str = Form(...), password: str = Form(...)):
@@ -154,8 +154,7 @@ def view_dashboard(request: Request, user_session: str = Cookie(None)):
     calc_score = min(5.0, 1.0 + (total_uploads * 0.5))
     stars = "⭐" * int(calc_score)
     
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
+    return templates.TemplateResponse(request=request, name="dashboard.html", context={
         "user_email": user_session,
         "user_tier": user_tier,
         "history": history,
