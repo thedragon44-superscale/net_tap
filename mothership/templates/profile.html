@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dragon HMS - Operator Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen p-10 font-sans">
+
+    <div class="max-w-2xl mx-auto bg-zinc-900 border border-zinc-800 rounded-lg p-8 shadow-2xl">
+        <h1 class="text-3xl font-bold text-orange-500 mb-2">OPERATOR PROFILE</h1>
+        <p class="text-zinc-400 mb-8 border-b border-zinc-800 pb-4">Manage your account and agent deployments.</p>
+
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-2">Desktop Agent Access</h2>
+            <p class="text-sm text-zinc-400 mb-4">
+                To connect a local Wiretap Edge Agent to this cloud dashboard, you must generate an Enterprise API Key. 
+                Generating a new key will instantly sever connections for any currently deployed agents.
+            </p>
+            <button id="genKeyBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded transition-colors">
+                Generate New Enterprise Key
+            </button>
+        </div>
+    </div>
+
+    <div id="keyModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center backdrop-blur-sm z-50">
+        <div class="bg-zinc-900 text-white p-8 rounded-lg max-w-lg w-full border border-orange-500 shadow-2xl">
+            <h3 class="text-2xl font-bold text-orange-500 mb-2">API KEY GENERATED</h3>
+            <p class="text-sm text-zinc-400 mb-6 border-b border-zinc-800 pb-4">
+                Copy this key and paste it into your desktop agent. For security purposes, 
+                <span class="text-red-400 font-bold">you will never be able to see this key again</span> once you close this window.
+            </p>
+            
+            <div class="flex items-center bg-black border border-zinc-700 p-1 rounded mb-6">
+                <input type="text" id="apiKeyDisplay" readonly class="bg-transparent text-green-400 font-mono text-sm w-full p-2 outline-none cursor-text">
+                <button id="copyBtn" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded ml-2 transition-colors">
+                    Copy
+                </button>
+            </div>
+            
+            <button id="closeModalBtn" class="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded transition-colors">
+                I Have Saved My Key
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const genKeyBtn = document.getElementById('genKeyBtn');
+        const keyModal = document.getElementById('keyModal');
+        const apiKeyDisplay = document.getElementById('apiKeyDisplay');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const copyBtn = document.getElementById('copyBtn');
+
+        // 1. Generate Key Request
+        genKeyBtn.addEventListener('click', async () => {
+            if (!confirm("WARNING: Generating a new key will instantly deactivate your existing agents. Proceed?")) return;
+
+            // In production, ensure you are passing the user's JWT session token in the headers
+            try {
+                const response = await fetch('/api/users/generate-api-key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    apiKeyDisplay.value = data.api_key;
+                    keyModal.classList.remove('hidden');
+                } else {
+                    alert("Failed to generate key: " + data.detail);
+                }
+            } catch (err) {
+                alert("Connection to the Mothership failed.");
+                console.error(err);
+            }
+        });
+
+        // 2. Copy to Clipboard
+        copyBtn.addEventListener('click', () => {
+            apiKeyDisplay.select();
+            document.execCommand('copy');
+            copyBtn.innerText = "Copied!";
+            copyBtn.classList.replace('bg-zinc-800', 'bg-green-600');
+            
+            // Reset button text after 2 seconds
+            setTimeout(() => {
+                copyBtn.innerText = "Copy";
+                copyBtn.classList.replace('bg-green-600', 'bg-zinc-800');
+            }, 2000);
+        });
+
+        // 3. Close & Purge Modal
+        closeModalBtn.addEventListener('click', () => {
+            apiKeyDisplay.value = ""; // Erase key from DOM memory
+            keyModal.classList.add('hidden');
+            window.location.reload(); // Refresh the profile page
+        });
+    </script>
+</body>
+</html>
