@@ -36,6 +36,20 @@
                     </div>
                     <p class="text-xs text-zinc-500 mt-2">Calculated from ledger ingestion volume & network capture anomalies (IP vs POS ping matching).</p>
                 </div>
+
+                <div class="bg-zinc-900 p-4 rounded-lg border border-zinc-700 mt-4">
+                    <p class="text-xs text-zinc-500 uppercase tracking-widest font-bold mb-2">Edge Agent Authentication</p>
+                    
+                    <div id="keyDisplayArea" class="hidden mb-3">
+                        <input type="text" id="apiKeyDisplay" readonly class="w-full bg-black text-green-400 font-mono text-sm p-2 rounded border border-zinc-700 outline-none mb-1 cursor-pointer" title="Click to copy">
+                        <p class="text-[10px] text-rose-400 font-bold uppercase">Save this key now. It will not be shown again.</p>
+                    </div>
+
+                    <button id="genKeyBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded transition shadow-lg shadow-blue-500/20 text-sm">
+                        Generate Enterprise API Key
+                    </button>
+                </div>
+
             </div>
             <div class="bg-zinc-900 p-4 border-t border-zinc-700 flex justify-end">
                 <a href="/logout" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-4 rounded-lg transition shadow-lg">Terminate Session</a>
@@ -387,6 +401,48 @@
                     processBtn.classList.remove("opacity-50", "cursor-not-allowed");
                     uploadPrompt.innerHTML = 'Browse or drag ledger here';
                     fileInput.value = '';
+                }
+            });
+        }
+
+        // --- API KEY GENERATOR LOGIC ---
+        const genKeyBtn = document.getElementById('genKeyBtn');
+        const keyDisplayArea = document.getElementById('keyDisplayArea');
+        const apiKeyDisplay = document.getElementById('apiKeyDisplay');
+
+        if (genKeyBtn) {
+            genKeyBtn.addEventListener('click', async () => {
+                if (!confirm("WARNING: Generating a new key will instantly deactivate any currently deployed agents. Proceed?")) return;
+
+                genKeyBtn.innerText = "Authorizing...";
+                genKeyBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/api/users/generate-api-key', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        apiKeyDisplay.value = data.api_key;
+                        keyDisplayArea.classList.remove('hidden');
+                        genKeyBtn.innerText = "Key Generated (Click key to copy)";
+                        genKeyBtn.classList.replace('bg-blue-600', 'bg-zinc-700');
+                        
+                        // Copy to clipboard functionality
+                        apiKeyDisplay.onclick = function() {
+                            this.select();
+                            document.execCommand('copy');
+                            genKeyBtn.innerText = "Copied to Clipboard!";
+                            genKeyBtn.classList.replace('bg-zinc-700', 'bg-green-600');
+                        };
+                    } else {
+                        alert("Failed to generate key: " + (data.detail || "Database Error"));
+                        genKeyBtn.innerText = "Generate Enterprise API Key";
+                        genKeyBtn.disabled = false;
+                    }
+                } catch (err) {
+                    alert("Connection to the Mothership failed.");
+                    genKeyBtn.innerText = "Generate Enterprise API Key";
+                    genKeyBtn.disabled = false;
                 }
             });
         }
