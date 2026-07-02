@@ -13,3 +13,7 @@ sqlalchemy
 psycopg2-binary
 python-multipart
 jinja2
+boto3
+stripe
+python-dotenv
+psycopg2-binary
