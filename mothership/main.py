@@ -230,6 +230,72 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         active_connections.remove(websocket)
 
+@app.post("/api/wiretap/ingest")
+async def ingest_wiretap_data(request: Request):
+    # 1. Authenticate the local edge agent
+    agent_key = request.headers.get("X-Dragon-Agent-Key")
+    if agent_key != AGENT_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid Agent Signature")
+    
+    # 2. Parse the incoming intelligence payload
+    try:
+        payload = await request.json()
+        # Default to legacy user if none provided by agent
+        user_email = payload.get("user_email", "legacy@system.local") 
+        scan_type = payload.get("scan_type", "network_scan") 
+        scan_data = payload.get("scan_data", {})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Malformed JSON payload received.")
+
+    # 3. Generate a unique filename and push raw data to S3
+    timestamp = int(time.time())
+    filename = f"wiretap_{scan_type}_{timestamp}.json"
+    
+    try:
+        s3_client.put_object(
+            Bucket=S3_BUCKET_NAME, 
+            Key=filename, 
+            Body=json.dumps(scan_data, indent=2).encode('utf-8')
+        )
+    except Exception as e:
+        print(f"S3 Upload Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to write intelligence to S3.")
+
+    # 4. Determine a metric count to log in the database
+    if scan_type == "nmap":
+        records_count = len(scan_data.get("scan", {}).keys()) if isinstance(scan_data, dict) else 1
+    else:
+        # Fallback for PCAP or other lists
+        records_count = len(scan_data) if isinstance(scan_data, list) else 1
+    
+    # 5. Log the report in PostgreSQL
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO reports (filename, records_count, user_email) VALUES (%s, %s, %s);",
+            (filename, records_count, user_email)
+        )
+        conn.commit()
+    except Exception as db_err:
+        conn.rollback()
+        print(f"Database Error during Wiretap ingest: {db_err}")
+    finally:
+        cur.close()
+        conn.close()
+
+    # 6. Blast a signal to the WebSockets to update the UI instantly
+    disconnected = []
+    for connection in active_connections:
+        try:
+            await connection.send_json({"qps": records_count})
+        except Exception:
+            disconnected.append(connection)
+    for conn in disconnected:
+        active_connections.remove(conn)
+
+    return {"status": "received", "code": 200}
+
 @app.post("/api/agent/telemetry")
 async def receive_telemetry(request: Request):
     agent_key = request.headers.get("X-Dragon-Agent-Key")
