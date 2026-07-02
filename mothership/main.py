@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, Header, Request, status
+from fastapi import FastAPI, Depends, HTTPException, Header, Request, status, Form
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
-from pydantic import BaseModel
 import secrets
 
 # --- DATABASE CONFIGURATION ---
@@ -32,6 +34,12 @@ def get_db():
 # --- FASTAPI APP INITIALIZATION ---
 app = FastAPI(title="Dragon HMS - Mothership API")
 
+# --- FRONTEND ASSET CONFIGURATION ---
+# Mount the static directory so your dragon_logo.png loads
+app.mount("/static", StaticFiles(directory="static"), name="static")
+# Tell FastAPI where to find your HTML files
+templates = Jinja2Templates(directory="templates")
+
 # --- MOCK AUTHENTICATION ---
 # In production, this should decode your JWT token to get the logged-in user
 def get_current_user(db: Session = Depends(get_db)):
@@ -44,7 +52,53 @@ def get_current_user(db: Session = Depends(get_db)):
         db.refresh(user)
     return user
 
-# --- ENDPOINT 1: GENERATE ENTERPRISE KEY ---
+# =====================================================================
+# UI FRONTEND ROUTES (RENDERING HTML)
+# =====================================================================
+
+@app.get("/")
+async def serve_gateway(request: Request):
+    """Serves the main login gateway."""
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/register")
+async def serve_register(request: Request):
+    """Serves the registration page."""
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@app.post("/register")
+async def process_register(request: Request, email: str = Form(...), password: str = Form(...)):
+    """Handles form submission from register.html"""
+    # Dummy redirect to login gateway after "registration"
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/login")
+async def process_login(request: Request, email: str = Form(...), password: str = Form(...)):
+    """Handles form submission from index.html (Login)"""
+    # Dummy redirect straight to the dashboard on successful login
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/dashboard")
+async def serve_dashboard(request: Request):
+    """Serves the main Enterprise Dashboard."""
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user_email": "operative@dragon.local", # Static mock for now
+        "user_tier": "enterprise",
+        "rating_stars": "⭐⭐⭐⭐⭐",
+        "rating_score": "5.0",
+        "history": []
+    })
+
+@app.get("/profile")
+async def serve_profile(request: Request):
+    """Serves the operator profile and API key generator."""
+    return templates.TemplateResponse("profile.html", {"request": request})
+
+# =====================================================================
+# API ENDPOINTS (JSON BACKEND)
+# =====================================================================
+
 @app.post("/api/users/generate-api-key")
 async def generate_api_key(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Generates a cryptographically secure key and assigns it to the user."""
@@ -60,7 +114,6 @@ async def generate_api_key(current_user: User = Depends(get_current_user), db: S
         db.rollback()
         raise HTTPException(status_code=500, detail="Database error during key generation.")
 
-# --- ENDPOINT 2: INGEST AGENT TELEMETRY ---
 @app.post("/api/wiretap/ingest")
 async def ingest_telemetry(
     request: Request,
