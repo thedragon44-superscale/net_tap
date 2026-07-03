@@ -17,3 +17,4 @@ boto3
 stripe
 python-dotenv
 psycopg2-binary
+PyJWT

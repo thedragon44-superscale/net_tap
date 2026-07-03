@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Header, Request, status, Form
+from fastapi import FastAPI, Depends, HTTPException, Header, Request, status, Form, Response, WebSocket, WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -10,18 +10,27 @@ import os
 import json
 import boto3
 import stripe
+import smtplib
+from email.mime.text import MIMEText
+import jwt
 from dotenv import load_dotenv
 
-# --- SECURE CREDENTIAL LOADING ---
-load_dotenv() # Loads variables from your local .env file
+load_dotenv() 
 
-# Pull from .env, fallback to local sqlite if missing
+# --- INFRASTRUCTURE CONFIGURATION ---
 SQLALCHEMY_DATABASE_URL = os.getenv("NEON_DB_URL", "sqlite:///./dragon_mothership.db")
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
+
+# --- SMTP / JWT CONFIGURATION ---
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASS = os.getenv("SMTP_PASS")
+JWT_SECRET = os.getenv("JWT_SECRET", "fallback_dev_key_change_in_prod")
+JWT_ALGORITHM = "HS256"
 
 # --- DATABASE CONFIGURATION ---
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {})
@@ -34,6 +43,8 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     enterprise_api_key = Column(String, unique=True, index=True, nullable=True)
+    otp_code = Column(String, nullable=True)
+    otp_expires_at = Column(DateTime, nullable=True)
 
 class Telemetry(Base):
     __tablename__ = "telemetry"
@@ -52,16 +63,13 @@ def get_db():
     finally:
         db.close()
 
-# --- FASTAPI APP INITIALIZATION ---
 app = FastAPI(title="Dragon HMS - Mothership API")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # =====================================================================
-# LIVE WEBSOCKET MANAGER (Keeping your real-time broadcast intact)
+# LIVE WEBSOCKET MANAGER 
 # =====================================================================
-from fastapi import WebSocket, WebSocketDisconnect
-
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -90,17 +98,41 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 # =====================================================================
-# UI FRONTEND ROUTES
+# AUTHENTICATION & EMAIL HELPERS
 # =====================================================================
 
-def get_current_user(db: Session = Depends(get_db)):
-    user = db.query(User).first()
-    if not user:
-        user = User(email="operative@dragon.local", hashed_password="hashed123")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    return user
+def send_otp_email(target_email: str, code: str):
+    """Fires the 6-digit payload via SMTP"""
+    try:
+        msg = MIMEText(f"Your Dragon HMS security clearance code is: {code}\n\nThis code expires in 10 minutes.")
+        msg['Subject'] = 'Dragon HMS - Authentication Code'
+        msg['From'] = SMTP_USER
+        msg['To'] = target_email
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASS)
+        server.send_message(msg)
+        server.quit()
+        print(f"[+] OTP sent to {target_email}")
+    except Exception as e:
+        print(f"[!] Email dispatch failed: {e}")
+
+def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)):
+    """Extracts the JWT from the browser cookie and maps it to the real user."""
+    token = request.cookies.get("dragon_session")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        email = payload.get("sub")
+        return db.query(User).filter(User.email == email).first()
+    except:
+        return None
+
+# =====================================================================
+# UI FRONTEND ROUTES
+# =====================================================================
 
 @app.get("/")
 async def serve_gateway(request: Request):
@@ -111,34 +143,87 @@ async def serve_register(request: Request):
     return templates.TemplateResponse(request=request, name="register.html")
 
 @app.post("/register")
-async def process_register(request: Request, email: str = Form(...), password: str = Form(...)):
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+async def process_register(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    # Check if user exists
+    if db.query(User).filter(User.email == email).first():
+        return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Email already registered."})
+    
+    # Save new user (In production, hash this password!)
+    new_user = User(email=email, hashed_password=password)
+    db.add(new_user)
+    db.commit()
+    
+    # Redirect to login
+    return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Registration successful. Please log in."})
 
 @app.post("/login")
-async def process_login(request: Request, email: str = Form(...), password: str = Form(...)):
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+async def process_login(response: Response, request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.hashed_password != password:
+        return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Invalid credentials."})
 
-@app.get("/logout")
-async def process_logout(request: Request):
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    # Generate 6-digit OTP
+    otp = str(secrets.randbelow(899999) + 100000)
+    user.otp_code = otp
+    user.otp_expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
+    db.commit()
+
+    # Dispatch email
+    send_otp_email(user.email, otp)
+
+    # Set a temporary cookie just to remember who is trying to log in
+    redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
+    redirect.set_cookie(key="pending_user", value=user.email, httponly=True)
+    return redirect
+
+@app.get("/verify")
+async def serve_verify(request: Request):
+    if not request.cookies.get("pending_user"):
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request=request, name="verify.html")
+
+@app.post("/verify")
+async def process_verify(request: Request, otp_code: str = Form(...), db: Session = Depends(get_db)):
+    pending_email = request.cookies.get("pending_user")
+    if not pending_email:
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+    user = db.query(User).filter(User.email == pending_email).first()
+    
+    # Validate OTP
+    if not user or user.otp_code != otp_code or user.otp_expires_at < datetime.datetime.now():
+        return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Invalid or expired OTP."})
+
+    # Clear OTP
+    user.otp_code = None
+    user.otp_expires_at = None
+    db.commit()
+
+    # Generate persistent JWT Session
+    token_payload = {"sub": user.email, "exp": datetime.datetime.now() + datetime.timedelta(days=1)}
+    session_token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+    # Issue cookie and redirect
+    response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(key="dragon_session", value=session_token, httponly=True)
+    response.delete_cookie("pending_user")
+    return response
 
 @app.get("/dashboard")
 async def serve_dashboard(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(db)
+    # 🟢 DYNAMIC USER LOADING 
+    user = get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
     user_history = db.query(Telemetry).filter(Telemetry.owner_email == user.email).order_by(Telemetry.id.desc()).limit(10).all()
-    
-    formatted_history = []
-    for record in user_history:
-        formatted_history.append({
-            "filename": f"{record.scan_type.upper()}_CAPTURE_{record.timestamp}.json",
-            "records_count": record.records_count
-        })
+    formatted_history = [{"filename": f"{r.scan_type.upper()}_CAPTURE_{r.timestamp}.json", "records_count": r.records_count} for r in user_history]
 
     return templates.TemplateResponse(
         request=request, 
         name="dashboard.html", 
         context={
-            "user_email": user.email,
+            "user_email": user.email, # Real email is now injected into the UI!
             "user_tier": "enterprise",
             "rating_stars": "⭐⭐⭐⭐⭐",
             "rating_score": "5.0",
@@ -146,30 +231,22 @@ async def serve_dashboard(request: Request, db: Session = Depends(get_db)):
         }
     )
 
-@app.get("/profile")
-async def serve_profile(request: Request):
-    return templates.TemplateResponse(request=request, name="profile.html")
+@app.get("/logout")
+async def process_logout():
+    response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie("dragon_session")
+    return response
 
 # =====================================================================
-# API ENDPOINTS (AWS S3 & STRIPE INTEGRATION)
+# API ENDPOINTS
 # =====================================================================
 
 @app.post("/create-checkout-session")
 async def create_checkout_session(request: Request):
-    """Triggers when a free user clicks 'Unlock Enterprise'."""
     try:
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'unit_amount': 49900, # $499.00
-                    'product_data': {
-                        'name': 'Dragon Enterprise Agent License',
-                    },
-                },
-                'quantity': 1,
-            }],
+            line_items=[{'price_data': {'currency': 'usd', 'unit_amount': 49900, 'product_data': {'name': 'Dragon Enterprise Agent License'}}, 'quantity': 1}],
             mode='payment',
             success_url=str(request.base_url) + "dashboard?session_id={CHECKOUT_SESSION_ID}",
             cancel_url=str(request.base_url) + "dashboard",
@@ -179,13 +256,17 @@ async def create_checkout_session(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/users/generate-api-key")
-async def generate_api_key(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def generate_api_key(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user_from_cookie(request, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
     new_key = f"drgn_live_{secrets.token_urlsafe(32)}"
     try:
         current_user.enterprise_api_key = new_key
         db.commit()
         return {"success": True, "api_key": new_key}
-    except Exception as e:
+    except:
         db.rollback()
         raise HTTPException(status_code=500, detail="Database error.")
 
@@ -206,25 +287,15 @@ async def ingest_telemetry(
     scan_type = payload.get("scan_type", "unknown")
     scan_data = payload.get("scan_data", {})
     record_count = len(scan_data) if isinstance(scan_data, (list, dict)) else 0
-    
     timestamp = datetime.datetime.now().strftime("%H%M%S")
     file_name = f"{associated_user.id}/{scan_type}_CAPTURE_{timestamp}.json"
 
-    # --- AWS S3 UPLOAD LOGIC ---
     try:
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=AWS_ACCESS_KEY,
-            aws_secret_access_key=AWS_SECRET_KEY
-        )
-        # Convert the dictionary back to a JSON string for storage
-        payload_bytes = json.dumps(payload).encode('utf-8')
-        s3_client.put_object(Bucket=AWS_BUCKET_NAME, Key=file_name, Body=payload_bytes)
+        s3_client = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
+        s3_client.put_object(Bucket=AWS_BUCKET_NAME, Key=file_name, Body=json.dumps(payload).encode('utf-8'))
     except Exception as e:
         print(f"[!] S3 Upload Failed: {str(e)}")
-        # We don't raise an HTTPException here so the DB/Websocket logic still runs even if S3 fails during testing
 
-    # --- DATABASE RECORD LOGIC ---
     new_telemetry = Telemetry(
         owner_email=associated_user.email,
         scan_type=scan_type,
@@ -234,10 +305,5 @@ async def ingest_telemetry(
     db.add(new_telemetry)
     db.commit()
     
-    # --- LIVE UI BROADCAST ---
-    await manager.broadcast({
-        "qps": record_count,
-        "scan_type": scan_type
-    })
-    
+    await manager.broadcast({"qps": record_count, "scan_type": scan_type})
     return {"status": "success", "owner": associated_user.email}
