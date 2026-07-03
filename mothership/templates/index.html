@@ -1,62 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Gateway | The Dragon HMS</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Dragon HMS - Gateway</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bg-login {
+            background-image: url('/static/business_marcus.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .metallic-border { border: 2px solid #94a3b8; border-radius: 1rem; }
+    </style>
 </head>
-<body class="bg-zinc-900 text-zinc-100 min-h-screen flex flex-col font-sans">
-    <nav class="bg-zinc-800 border-b border-zinc-700 px-6 py-3 flex justify-between items-center shadow-lg z-50 sticky top-0">
-        <div class="flex items-center space-x-3">
-            <img src="/static/dragon_logo.png" alt="Dragon Logo" class="h-10 w-10 rounded-full border border-orange-500 shadow-md object-cover">
-            <h1 class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600 tracking-wider">THE DRAGON <span class="text-orange-500">HMS</span></h1>
+<body class="bg-login text-white font-sans antialiased min-h-screen flex items-center justify-center relative">
+    
+    <div class="absolute inset-0 bg-black/60 pointer-events-none z-0"></div>
+    
+    <div class="glass-panel metallic-border p-10 w-full max-w-md relative z-10 flex flex-col items-center">
+        <img src="/static/dragon_logo.png" alt="Dragon Logo" class="w-20 h-20 mb-4 rounded-full border-2 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] object-cover">
+        <h2 class="text-3xl font-bold text-white mb-1 tracking-wider">THE DRAGON <span class="text-blue-500">HMS</span></h2>
+        <p class="text-blue-200 mb-8 text-sm uppercase tracking-widest font-bold">Operative Gateway</p>
+        
+        {% if error_message %}
+        <div class="bg-red-500/20 border border-red-500 text-red-300 px-4 py-2 rounded mb-6 w-full text-center text-sm font-bold shadow-inner">
+            {{ error_message }}
         </div>
-        <div class="flex items-center space-x-4">
-            <span class="text-zinc-400 text-sm font-semibold hidden md:inline">Intelligence Portal</span>
-            <a href="/register" class="text-xs bg-blue-600 text-white hover:bg-blue-500 px-4 py-2 rounded-md transition font-semibold shadow-lg">Register Unit</a>
-        </div>
-    </nav>
-    <main class="flex-1 max-w-7xl mx-auto p-6 md:p-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        <div class="space-y-8">
-            <div>
-                <h2 class="text-4xl md:text-5xl font-extrabold text-blue-500 mb-4 tracking-tighter">Secure Your Retail Perimeter</h2>
-                <p class="text-zinc-400 text-lg">Integrated headquarters management with real-time PCAP forensics, geo-fraud triangulation, and dynamic risk scoring.</p>
-            </div>
-            <div class="bg-zinc-800 p-8 rounded-xl border-t-4 border-orange-500 shadow-2xl relative overflow-hidden">
-                <h3 class="text-2xl font-bold mb-6 text-white text-center">Login</h3>
-                
-                {% if error_message %}
-                <div class="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs p-3 rounded-lg text-center font-medium mb-4 tracking-wide shadow-inner">
-                    ⚠️ ERROR: {{ error_message }}
-                </div>
-                {% endif %}
+        {% endif %}
 
-                <form action="/login" method="post" class="space-y-4 relative z-10">
-                    <div>
-                        <label class="block text-zinc-300 text-sm font-semibold mb-1">Business Email</label>
-                        <input type="email" name="email" required class="w-full px-4 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:border-orange-500 transition">
-                    </div>
-                    <div>
-                        <label class="block text-zinc-300 text-sm font-semibold mb-1">Access Key</label>
-                        <input type="password" name="password" required class="w-full px-4 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:border-orange-500 transition">
-                    </div>
-                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-400 text-white shadow-lg shadow-orange-500/30 font-bold py-3 rounded-lg transition duration-200 mt-4 cursor-pointer">Authenticate to Matrix</button>
-                </form>
+        <form action="/login" method="post" class="w-full space-y-5">
+            <div>
+                <input type="email" name="email" required placeholder="Operative Email" class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/20 text-white placeholder-zinc-400 focus:outline-none focus:border-blue-400 transition backdrop-blur-md">
             </div>
-        </div>
-        <div class="space-y-6">
-            <div class="bg-zinc-800 p-2 rounded-2xl shadow-2xl border border-zinc-700 relative overflow-hidden h-64 flex items-center justify-center bg-gradient-to-br from-blue-900/40 to-zinc-900">
-                <div class="text-center text-zinc-500">
-                    <span class="text-6xl">💻 🕵️‍♂️</span>
-                    <p class="mt-2 font-mono text-sm text-blue-400">[ LIVE COMMAND CENTER ]</p>
-                </div>
+            <div>
+                <input type="password" name="password" required placeholder="Passcode" class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/20 text-white placeholder-zinc-400 focus:outline-none focus:border-blue-400 transition backdrop-blur-md">
             </div>
-            <div class="bg-zinc-800 p-2 rounded-2xl shadow-2xl border border-zinc-700 relative overflow-hidden h-48 flex items-center justify-center bg-gradient-to-br from-orange-900/20 to-zinc-900">
-                <div class="text-center text-zinc-500">
-                    <span class="text-6xl">🏪 🚶‍♂️🚶‍♀️🚶</span>
-                    <p class="mt-2 font-mono text-sm text-orange-400">[ POS PERIMETER SECURED ]</p>
-                </div>
-            </div>
-        </div>
-    </main>
+            <button type="submit" class="w-full bg-blue-600/80 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-400/50 backdrop-blur-md cursor-pointer">
+                Authenticate
+            </button>
+        </form>
+        
+        <p class="mt-6 text-zinc-400 text-sm">No clearance? <a href="/register" class="text-blue-400 hover:text-blue-300 transition font-bold">Request Access</a></p>
+    </div>
 </body>
 </html>

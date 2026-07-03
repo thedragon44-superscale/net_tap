@@ -1,22 +1,43 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Dragon HMS - Verification</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bg-login {
+            background-image: url('/static/business_marcus.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .metallic-border { border: 2px solid #94a3b8; border-radius: 1rem; }
+    </style>
 </head>
-<body class="bg-zinc-900 flex items-center justify-center min-h-screen font-sans p-6">
-    <div class="bg-zinc-800 p-8 rounded-xl shadow-2xl w-full max-w-md border-t-4 border-orange-500 shadow-[0_0_40px_rgba(249,115,22,0.15)]">
-        <div class="flex justify-center mb-6">
-            <img src="/static/dragon_logo.png" alt="Dragon Logo" class="h-20 w-20 rounded-full border border-orange-500 shadow-lg object-cover">
-        </div>
-        <h2 class="text-2xl font-extrabold text-center text-white mb-2 tracking-tight">IDENTITY VERIFICATION</h2>
-        <p class="text-zinc-400 text-center text-sm mb-6">Enter the 6-digit transmission sent to your email.</p>
+<body class="bg-login text-white font-sans antialiased min-h-screen flex items-center justify-center relative">
+    
+    <div class="absolute inset-0 bg-black/70 pointer-events-none z-0"></div>
+    
+    <div class="glass-panel metallic-border p-10 w-full max-w-md relative z-10 flex flex-col items-center">
+        <img src="/static/icon_icon.png" alt="ID Icon" class="w-20 h-20 mb-4 drop-shadow-xl">
+        <h2 class="text-2xl font-bold text-white mb-2 tracking-wider text-center">IDENTITY VERIFICATION</h2>
+        <p class="text-blue-200 mb-8 text-sm text-center">Enter the 6-digit transmission sent to your email.</p>
         
-        <form action="/verify" method="post" class="space-y-4">
+        <form action="/verify" method="post" class="w-full space-y-6">
             <div>
-                <input type="text" name="otp_code" required placeholder="XXXXXX" maxlength="6" class="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-orange-500 text-center text-2xl font-mono tracking-[0.5em] focus:outline-none focus:border-orange-500 transition">
+                <input type="text" name="otp_code" required placeholder="XXXXXX" maxlength="6" class="w-full px-4 py-4 rounded-lg bg-black/60 border border-white/30 text-white text-center text-3xl font-mono tracking-[0.5em] focus:outline-none focus:border-blue-400 transition backdrop-blur-md">
             </div>
-            <button type="submit" class="w-full bg-orange-500 hover:bg-orange-400 text-white shadow-lg shadow-orange-500/30 font-bold py-3 rounded-lg transition duration-200 mt-2 cursor-pointer">Authenticate to Matrix</button>
+            <button type="submit" class="w-full bg-blue-600/80 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-400/50 backdrop-blur-md cursor-pointer">
+                Unlock Matrix
+            </button>
         </form>
     </div>
 </body>

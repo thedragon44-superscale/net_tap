@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* --- CUSTOM AESTHETICS --- */
         .bg-dashboard {
             background-image: url('/static/citystreets.png');
             background-size: cover;
@@ -21,20 +20,15 @@
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
-        .metallic-border {
-            border: 2px solid #94a3b8; 
-            border-radius: 1rem;
-        }
+        .metallic-border { border: 2px solid #94a3b8; border-radius: 1rem; }
         
-        /* --- DYNAMIC TABLE STYLING --- */
         #tableContainer table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         #tableContainer th { border-bottom: 2px solid rgba(255, 255, 255, 0.3); padding: 12px; text-align: left; color: #93c5fd; font-weight: 700; text-transform: uppercase;}
         #tableContainer td { border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 12px; color: #e2e8f0; }
         #tableContainer tr:hover { background-color: rgba(255, 255, 255, 0.05); }
 
-        /* Custom Scrollbar for Terminals & Lists */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); rounded: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
     </style>
@@ -42,9 +36,9 @@
 <body class="bg-dashboard text-white font-sans antialiased min-h-screen pb-12 relative">
     
     <div class="fixed inset-0 bg-blue-900/40 mix-blend-multiply pointer-events-none z-0"></div>
-    <div class="fixed inset-0 bg-black/40 pointer-events-none z-0"></div>
+    <div class="fixed inset-0 bg-black/50 pointer-events-none z-0"></div>
 
-    <div id="profileModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div id="profileModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
         <div class="glass-panel metallic-border max-w-md w-full overflow-hidden relative">
             <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
                 <h2 class="text-xl font-bold text-white flex items-center">
@@ -60,28 +54,19 @@
                     <p class="text-lg font-mono text-white">{{ user_email }}</p>
                 </div>
                 
-                <div class="bg-white/5 p-4 rounded-lg border border-white/10">
-                    <p class="text-xs text-blue-300 uppercase tracking-widest font-bold mb-1">Dynamic Business Rating</p>
-                    <div class="flex items-center justify-between">
-                        <span class="text-2xl text-yellow-400">{{ rating_stars }}</span>
-                        <span class="text-white font-mono text-sm">{{ rating_score }}/5.0</span>
-                    </div>
-                </div>
-
-                <div class="bg-white/5 p-4 rounded-lg border border-white/10 mt-4 relative">
+                <div class="bg-white/5 p-4 rounded-lg border border-white/10 relative">
                     <img src="/static/scripts_icon.png" alt="Keys" class="absolute top-2 right-2 w-8 h-8 opacity-40">
                     <p class="text-xs text-blue-300 uppercase tracking-widest font-bold mb-3">Edge Agent Authentication</p>
                     
                     <div id="keyDisplayArea" class="hidden mb-3">
                         <input type="text" id="apiKeyDisplay" readonly class="w-full px-4 py-2 rounded-lg bg-black/50 border border-green-500/50 text-green-400 font-mono text-sm focus:outline-none backdrop-blur-md cursor-pointer text-center" title="Click to copy">
-                        <p class="text-[10px] text-orange-400 font-bold uppercase mt-2 text-center">Save this key now. It will not be shown again.</p>
+                        <p class="text-[10px] text-blue-300 font-bold uppercase mt-2 text-center">Save this key now. It will not be shown again.</p>
                     </div>
 
                     <button id="genKeyBtn" class="w-full bg-blue-600/80 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition shadow-lg border border-blue-400/50 backdrop-blur-md text-sm">
                         Generate Enterprise API Key
                     </button>
                 </div>
-
             </div>
             <div class="p-4 border-t border-white/10 flex justify-end bg-white/5">
                 <a href="/logout" class="bg-red-600/80 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg border border-red-400/50 transition shadow-lg backdrop-blur-md">Terminate Session</a>
@@ -104,7 +89,6 @@
     <main class="max-w-7xl mx-auto mt-8 px-4 grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
         
         <div class="lg:col-span-1 space-y-6">
-            
             <div class="glass-panel metallic-border p-6 relative">
                 <h2 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">Command Center</h2>
                 <div class="space-y-4 mt-4">
@@ -176,7 +160,7 @@
                 </div>
                 {% endif %}
 
-                <div class="flex-1 font-mono text-xs text-green-300 space-y-1 overflow-y-auto bg-black/60 p-4 rounded-lg border border-white/10 shadow-inner" id="live-terminal">
+                <div class="flex-1 font-mono text-xs text-green-400 space-y-1 overflow-y-auto bg-black/60 p-4 rounded-lg border border-white/10 shadow-inner" id="live-terminal">
                     <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] System initialized securely.</p>
                     <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] User {{ user_email }} authenticated.</p>
                     <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] Establishing connection to Mothership...</p>
@@ -252,7 +236,6 @@
     </main>
 
     <script>
-        // --- SECURE MODAL CLOSE (PURGES MEMORY) ---
         function closeProfileModal() {
             document.getElementById('profileModal').classList.add('hidden');
             const displayObj = document.getElementById('apiKeyDisplay');
@@ -269,7 +252,6 @@
             }
         }
 
-        // --- WEBSOCKETS LOGIC ---
         const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const ws = new WebSocket(wsProtocol + window.location.host + '/ws/vitals');
         
@@ -300,7 +282,6 @@
             statusEl.className = 'text-red-400 font-mono font-bold text-xs border border-red-500/50 rounded px-2 py-0.5 bg-red-500/10';
         };
 
-        // --- DASHBOARD UI LOGIC ---
         const fileInput = document.getElementById('fileInput');
         const uploadPrompt = document.getElementById('uploadPrompt');
         const uploadForm = document.getElementById('uploadForm');
@@ -459,7 +440,6 @@
             });
         }
 
-        // --- API KEY GENERATOR LOGIC ---
         const genKeyBtn = document.getElementById('genKeyBtn');
         const keyDisplayArea = document.getElementById('keyDisplayArea');
         const apiKeyDisplay = document.getElementById('apiKeyDisplay');
@@ -489,7 +469,7 @@
                         };
                     } else {
                         alert("Failed to generate key: " + (data.detail || "Database Error"));
-                        closeProfileModal(); // Resets button state
+                        closeProfileModal(); 
                     }
                 } catch (err) {
                     alert("Connection to the Mothership failed.");
