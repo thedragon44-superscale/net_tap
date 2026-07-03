@@ -1,124 +1,155 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Dragon HMS - Interface</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* --- CUSTOM AESTHETICS --- */
+        .bg-dashboard {
+            background-image: url('/static/citystreets.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .metallic-border {
+            border: 2px solid #94a3b8; 
+            border-radius: 1rem;
+        }
+        
+        /* --- DYNAMIC TABLE STYLING --- */
         #tableContainer table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        #tableContainer th { border-bottom: 2px solid #ea580c; padding: 12px; text-align: left; color: #f97316; font-weight: 700; text-transform: uppercase;}
-        #tableContainer td { border-bottom: 1px solid #3f3f46; padding: 12px; color: #d4d4d8; }
-        #tableContainer tr:hover { background-color: rgba(249, 115, 22, 0.05); }
+        #tableContainer th { border-bottom: 2px solid rgba(255, 255, 255, 0.3); padding: 12px; text-align: left; color: #93c5fd; font-weight: 700; text-transform: uppercase;}
+        #tableContainer td { border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 12px; color: #e2e8f0; }
+        #tableContainer tr:hover { background-color: rgba(255, 255, 255, 0.05); }
+
+        /* Custom Scrollbar for Terminals & Lists */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); rounded: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
     </style>
 </head>
-<body class="bg-zinc-900 text-zinc-100 min-h-screen font-sans pb-12 relative">
+<body class="bg-dashboard text-white font-sans antialiased min-h-screen pb-12 relative">
     
-    <div id="profileModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-        <div class="bg-zinc-800 border border-zinc-700 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div class="bg-zinc-900 p-6 border-b border-zinc-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-white flex items-center"><span class="text-2xl mr-2">👤</span> Operative Profile</h2>
-                <button onclick="document.getElementById('profileModal').classList.add('hidden')" class="text-zinc-500 hover:text-white transition text-2xl leading-none">&times;</button>
+    <div class="fixed inset-0 bg-blue-900/40 mix-blend-multiply pointer-events-none z-0"></div>
+    <div class="fixed inset-0 bg-black/40 pointer-events-none z-0"></div>
+
+    <div id="profileModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div class="glass-panel metallic-border max-w-md w-full overflow-hidden relative">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <h2 class="text-xl font-bold text-white flex items-center">
+                    <img src="/static/icon_icon.png" alt="Avatar" class="w-8 h-8 mr-3 drop-shadow-md hidden sm:block"> 
+                    Operative Profile
+                </h2>
+                <button onclick="closeProfileModal()" class="text-zinc-400 hover:text-white transition text-2xl leading-none">&times;</button>
             </div>
+            
             <div class="p-6 space-y-4">
-                <div>
-                    <p class="text-xs text-zinc-500 uppercase tracking-widest font-bold">Username / Target</p>
-                    <p class="text-lg font-mono text-blue-400">{{ user_email }}</p>
+                <div class="bg-white/5 p-4 rounded-lg border border-white/10">
+                    <p class="text-xs text-blue-300 uppercase tracking-widest font-bold mb-1">Username / Target</p>
+                    <p class="text-lg font-mono text-white">{{ user_email }}</p>
                 </div>
-                <div>
-                    <p class="text-xs text-zinc-500 uppercase tracking-widest font-bold">Subscription Tier</p>
-                    <p class="text-lg text-white uppercase">{{ user_tier }}</p>
-                </div>
-                <div class="bg-zinc-900 p-4 rounded-lg border border-zinc-700 mt-4">
-                    <p class="text-xs text-zinc-500 uppercase tracking-widest font-bold mb-1">Dynamic Business Rating</p>
+                
+                <div class="bg-white/5 p-4 rounded-lg border border-white/10">
+                    <p class="text-xs text-blue-300 uppercase tracking-widest font-bold mb-1">Dynamic Business Rating</p>
                     <div class="flex items-center justify-between">
-                        <span class="text-2xl text-yellow-500">{{ rating_stars }}</span>
-                        <span class="text-zinc-400 font-mono text-sm">{{ rating_score }}/5.0</span>
+                        <span class="text-2xl text-yellow-400">{{ rating_stars }}</span>
+                        <span class="text-white font-mono text-sm">{{ rating_score }}/5.0</span>
                     </div>
-                    <p class="text-xs text-zinc-500 mt-2">Calculated from ledger ingestion volume & network capture anomalies (IP vs POS ping matching).</p>
                 </div>
 
-                <div class="bg-zinc-900 p-4 rounded-lg border border-zinc-700 mt-4">
-                    <p class="text-xs text-zinc-500 uppercase tracking-widest font-bold mb-2">Edge Agent Authentication</p>
+                <div class="bg-white/5 p-4 rounded-lg border border-white/10 mt-4 relative">
+                    <img src="/static/scripts_icon.png" alt="Keys" class="absolute top-2 right-2 w-8 h-8 opacity-40">
+                    <p class="text-xs text-blue-300 uppercase tracking-widest font-bold mb-3">Edge Agent Authentication</p>
                     
                     <div id="keyDisplayArea" class="hidden mb-3">
-                        <input type="text" id="apiKeyDisplay" readonly class="w-full bg-black text-green-400 font-mono text-sm p-2 rounded border border-zinc-700 outline-none mb-1 cursor-pointer" title="Click to copy">
-                        <p class="text-[10px] text-rose-400 font-bold uppercase">Save this key now. It will not be shown again.</p>
+                        <input type="text" id="apiKeyDisplay" readonly class="w-full px-4 py-2 rounded-lg bg-black/50 border border-green-500/50 text-green-400 font-mono text-sm focus:outline-none backdrop-blur-md cursor-pointer text-center" title="Click to copy">
+                        <p class="text-[10px] text-orange-400 font-bold uppercase mt-2 text-center">Save this key now. It will not be shown again.</p>
                     </div>
 
-                    <button id="genKeyBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded transition shadow-lg shadow-blue-500/20 text-sm">
+                    <button id="genKeyBtn" class="w-full bg-blue-600/80 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition shadow-lg border border-blue-400/50 backdrop-blur-md text-sm">
                         Generate Enterprise API Key
                     </button>
                 </div>
 
             </div>
-            <div class="bg-zinc-900 p-4 border-t border-zinc-700 flex justify-end">
-                <a href="/logout" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-4 rounded-lg transition shadow-lg">Terminate Session</a>
+            <div class="p-4 border-t border-white/10 flex justify-end bg-white/5">
+                <a href="/logout" class="bg-red-600/80 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg border border-red-400/50 transition shadow-lg backdrop-blur-md">Terminate Session</a>
             </div>
         </div>
     </div>
 
-    <nav class="bg-zinc-800 border-b border-zinc-700 px-6 py-3 flex justify-between items-center sticky top-0 z-50 shadow-md">
+    <nav class="glass-panel border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div class="flex items-center space-x-3">
-            <img src="/static/dragon_logo.png" alt="Dragon Logo" class="h-10 w-10 rounded-full border border-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.3)] object-cover">
-            <h1 class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600 tracking-wider">THE DRAGON <span class="text-orange-500">HMS</span></h1>
+            <img src="/static/dragon_logo.png" alt="Dragon Logo" class="h-10 w-10 rounded-full border border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)] object-cover">
+            <h1 class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-400 tracking-wider">THE DRAGON <span class="text-blue-500">HMS</span></h1>
         </div>
         <div class="flex items-center space-x-4">
-            <button onclick="document.getElementById('profileModal').classList.remove('hidden')" class="flex items-center space-x-2 bg-blue-600/10 hover:bg-blue-600/20 px-4 py-2 rounded-lg border border-blue-500/30 transition shadow-inner">
-                <span class="text-sm font-bold uppercase text-blue-400 tracking-wider">Profile</span>
+            <button onclick="document.getElementById('profileModal').classList.remove('hidden')" class="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg border border-white/20 transition shadow-inner backdrop-blur-md">
+                <span class="text-sm font-bold uppercase text-blue-300 tracking-wider">Profile</span>
             </button>
         </div>
     </nav>
     
-    <main class="max-w-7xl mx-auto mt-8 px-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <main class="max-w-7xl mx-auto mt-8 px-4 grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
         
         <div class="lg:col-span-1 space-y-6">
             
-            <div class="bg-zinc-800 rounded-xl p-6 border-t-4 border-orange-500 shadow-xl">
-                <h2 class="text-lg font-bold mb-1 text-white flex items-center">Command Center</h2>
+            <div class="glass-panel metallic-border p-6 relative">
+                <h2 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">Command Center</h2>
                 <div class="space-y-4 mt-4">
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="text-zinc-400">Agent Status</span>
-                        <span id="agent-status" class="text-yellow-500 font-mono font-bold">AWAITING CONNECTION</span>
+                    <div class="flex justify-between items-center text-sm bg-white/5 p-3 rounded border border-white/10">
+                        <span class="text-zinc-300">Agent Status</span>
+                        <span id="agent-status" class="text-yellow-400 font-mono font-bold text-xs border border-yellow-500/50 rounded px-2 py-0.5 bg-yellow-500/10">AWAITING CONNECTION</span>
                     </div>
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="text-zinc-400">Network QPS</span>
+                    <div class="flex justify-between items-center text-sm bg-white/5 p-3 rounded border border-white/10">
+                        <span class="text-zinc-300">Network QPS</span>
                         <span id="qps-display" class="font-mono text-xl text-white font-bold">0</span>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-zinc-800 rounded-xl p-6 border border-zinc-700 shadow-xl">
-                <h2 class="text-sm uppercase tracking-wider text-zinc-400 font-bold mb-4">Legacy Data Ingestion</h2>
+            <div class="glass-panel rounded-xl p-6 relative">
+                <h3 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">Legacy Data Ingestion</h3>
                 <form id="uploadForm" class="space-y-4">
-                    <div class="border-2 border-dashed border-zinc-600 rounded-xl p-6 text-center hover:border-orange-500 hover:bg-orange-500/5 transition bg-zinc-900 cursor-pointer relative group">
+                    <div class="border-2 border-dashed border-white/30 rounded-xl p-6 text-center hover:border-blue-400 hover:bg-blue-900/20 transition bg-black/20 cursor-pointer relative group backdrop-blur-sm">
                         <input type="file" id="fileInput" name="file" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                        <svg class="mx-auto h-10 w-10 text-zinc-500 group-hover:text-orange-500 transition mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="mx-auto h-10 w-10 text-zinc-400 group-hover:text-blue-400 transition mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         <p id="uploadPrompt" class="text-zinc-300 font-medium text-xs">Browse or drag ledger here</p>
                     </div>
-                    <button id="processBtn" type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 font-bold py-2 rounded-lg transition cursor-pointer">Process Ledger</button>
+                    <button id="processBtn" type="submit" class="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white shadow-lg backdrop-blur-md font-bold py-2 rounded-lg transition cursor-pointer">Process Ledger</button>
                 </form>
             </div>
 
-            <div class="bg-zinc-800 rounded-xl p-6 border border-zinc-700 shadow-xl">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-sm uppercase tracking-wider text-zinc-400 font-bold">Recent Operations</h2>
-                </div>
-                <div class="overflow-x-auto">
+            <div class="glass-panel rounded-xl p-6 relative">
+                <img src="/static/scripts_icon.png" alt="Logs" class="absolute top-4 right-4 w-10 h-10 drop-shadow-lg opacity-60">
+                <h3 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">Recent Operations</h3>
+                <div class="overflow-x-auto h-48 overflow-y-auto pr-2">
                     <table class="w-full text-left text-sm">
-                        <tbody id="historyTable" class="divide-y divide-zinc-700/50">
+                        <tbody id="historyTable" class="space-y-2 flex flex-col">
                             {% if history %}
                                 {% for r in history %}
-                                <tr class="hover:bg-zinc-700/40 transition group cursor-pointer" onclick="loadHistoricalData('{{ r.filename }}');">
-                                    <td class="py-3 max-w-[150px]">
-                                        <span class="text-blue-400 font-mono truncate block group-hover:text-orange-400 transition" title="{{ r.filename }}">{{ r.filename }}</span>
+                                <tr class="flex justify-between items-center bg-white/5 p-2 rounded border border-white/10 hover:bg-white/10 cursor-pointer transition group" onclick="loadHistoricalData('{{ r.filename }}');">
+                                    <td class="max-w-[150px]">
+                                        <span class="text-blue-200 font-mono text-xs truncate block group-hover:text-white transition" title="{{ r.filename }}">{{ r.filename }}</span>
                                     </td>
-                                    <td class="py-3 text-zinc-300 font-mono text-right group-hover:text-white transition">{{ r.records_count }} <span class="text-zinc-500 text-xs">rows</span></td>
+                                    <td class="text-white font-mono text-xs text-right">{{ r.records_count }} <span class="text-zinc-400">rows</span></td>
                                 </tr>
                                 {% endfor %}
                             {% else %}
-                                <tr><td colspan="2" class="py-6 text-center text-zinc-500 italic">No operational logs recorded.</td></tr>
+                                <tr><td colspan="2" class="py-6 text-center text-zinc-400 italic text-xs">No operational logs recorded.</td></tr>
                             {% endif %}
                         </tbody>
                     </table>
@@ -128,118 +159,136 @@
 
         <div class="lg:col-span-2 space-y-6">
             
-            <div class="bg-zinc-800 rounded-xl p-6 border-t-4 border-rose-500 shadow-xl relative overflow-hidden">
-                <h3 class="text-lg font-bold mb-2 text-white">Live Forensics & Intelligence</h3>
+            <div class="glass-panel metallic-border p-6 relative overflow-hidden flex flex-col h-[320px]">
+                <h3 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">System Forensics Logs</h3>
 
                 {% if user_tier == 'free' %}
-                <div class="absolute inset-0 bg-zinc-900/90 backdrop-blur-sm flex flex-col items-center justify-center z-10 p-6 md:p-12 text-center">
-                    <svg class="w-12 h-12 text-orange-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2-2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                    <h2 class="text-2xl font-bold mb-2 text-white">ENTERPRISE FEATURE</h2>
-                    <p class="text-zinc-400 text-sm mb-6 max-w-md">Upgrade to connect the Dragon Agent. Unlock live PCAP inspection, Geo-Fraud mapping, and secure payload downloads.</p>
+                <div class="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-10 p-6 md:p-12 text-center rounded-xl">
+                    <svg class="w-12 h-12 text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2-2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    <h2 class="text-2xl font-bold mb-2 text-white drop-shadow-md">ENTERPRISE FEATURE</h2>
+                    <p class="text-zinc-300 text-sm mb-6 max-w-md">Upgrade to connect the Dragon Agent. Unlock live PCAP inspection, Geo-Fraud mapping, and secure payload downloads.</p>
                     
                     <form action="/create-checkout-session" method="POST">
-                        <button type="submit" class="bg-orange-500 hover:bg-orange-400 text-white font-black px-6 py-3 rounded-lg shadow-[0_0_15px_rgba(249,115,22,0.5)] transition">
+                        <button type="submit" class="bg-blue-600/80 hover:bg-blue-500 border border-blue-400/50 text-white font-black px-6 py-3 rounded-lg shadow-lg backdrop-blur-md transition">
                             Unlock Enterprise - $499
                         </button>
                     </form>
                 </div>
                 {% endif %}
 
-                <div class="min-h-[200px] text-zinc-400 text-sm font-mono flex flex-col justify-end">
-                    
-                    <div id="live-terminal" class="h-48 overflow-y-auto bg-black p-4 rounded-lg border border-zinc-700 mb-4 space-y-1 shadow-inner">
-                    </div>
-
-                    {% if user_tier == 'enterprise' %}
-                    <div class="mt-2 bg-zinc-900 border border-zinc-700 p-4 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4 shadow-md">
-                        <div>
-                            <h4 class="text-sm font-bold text-white">Dragon Agent (Production Build)</h4>
-                            <p class="text-xs text-zinc-500 mt-1">Deploy this executable on your target POS machine to begin streaming.</p>
-                        </div>
-                        <a href="/download/dragon_agent" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-6 py-3 rounded-lg transition shadow-lg shadow-blue-500/30 whitespace-nowrap text-center">
-                            Download Agent (.EXE)
-                        </a>
-                    </div>
-                    {% endif %}
-
+                <div class="flex-1 font-mono text-xs text-green-300 space-y-1 overflow-y-auto bg-black/60 p-4 rounded-lg border border-white/10 shadow-inner" id="live-terminal">
+                    <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] System initialized securely.</p>
+                    <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] User {{ user_email }} authenticated.</p>
+                    <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] Establishing connection to Mothership...</p>
+                    <p class="animate-pulse text-zinc-400">[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] Awaiting agent data pulse...</p>
                 </div>
+
+                {% if user_tier == 'enterprise' %}
+                <div class="mt-4 bg-white/5 border border-white/10 p-4 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h4 class="text-sm font-bold text-blue-200">Dragon Agent (Production Build)</h4>
+                        <p class="text-xs text-zinc-400 mt-1">Deploy this executable on your target POS machine to begin streaming.</p>
+                    </div>
+                    <a href="/download/dragon_agent" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-6 py-2 rounded-lg transition shadow-lg backdrop-blur-md whitespace-nowrap text-center">
+                        Download .EXE
+                    </a>
+                </div>
+                {% endif %}
             </div>
 
-            <div id="resultsDisplay" class="hidden bg-zinc-800 rounded-xl p-8 border border-zinc-700 shadow-xl space-y-6 h-full relative">
+            <div id="resultsDisplay" class="hidden glass-panel rounded-xl p-6 relative">
                 
-                <div id="loadingOverlay" class="hidden absolute inset-0 bg-zinc-800/90 backdrop-blur-sm z-10 rounded-xl flex flex-col items-center justify-center text-orange-500">
-                    <svg class="animate-spin h-12 w-12 mb-4 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <div id="loadingOverlay" class="hidden absolute inset-0 bg-black/70 backdrop-blur-md z-10 rounded-xl flex flex-col items-center justify-center text-blue-400">
+                    <svg class="animate-spin h-12 w-12 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p class="font-bold tracking-wider animate-pulse">EXTRACTING FROM S3 CLOUD...</p>
+                    <p class="font-bold tracking-wider animate-pulse text-sm">SYNCHRONIZING DATACUBE...</p>
                 </div>
 
-                <div class="flex justify-between items-start border-b border-zinc-700 pb-4">
+                <div class="flex justify-between items-start border-b border-white/10 pb-4">
                     <div>
-                        <h3 class="text-2xl font-bold text-orange-500">Intelligence Matrix Resolved</h3>
-                        <p class="text-zinc-400 text-sm mt-1">Target File: <span id="resFilename" class="text-blue-400 font-mono"></span> | Format: <span id="resFormat" class="text-blue-400 font-mono uppercase"></span></p>
+                        <h3 class="text-xl font-bold text-white drop-shadow-md">Data Pulse Resolved</h3>
+                        <p class="text-zinc-300 text-xs mt-1">Target File: <span id="resFilename" class="text-blue-300 font-mono"></span> | Format: <span id="resFormat" class="text-blue-300 font-mono uppercase"></span></p>
                     </div>
                     <div class="flex space-x-2">
-                        <a id="downloadRawBtn" href="#" class="bg-zinc-700 hover:bg-zinc-600 text-zinc-300 text-xs px-3 py-1.5 rounded-lg border border-zinc-600 transition flex items-center">
-                            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <a id="downloadRawBtn" href="#" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded border border-white/20 transition flex items-center backdrop-blur-sm">
+                            <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                             Raw
                         </a>
-                        <span id="metricBadge" class="bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-lg border border-blue-500/30 font-mono font-bold shadow-inner"></span>
+                        <span id="metricBadge" class="bg-blue-500/20 text-blue-200 px-3 py-1.5 rounded border border-blue-500/50 font-mono text-xs font-bold shadow-inner"></span>
                     </div>
                 </div>
                 
-                <div class="pt-2">
+                <div class="pt-4">
                     <div class="flex justify-between items-center mb-4">
-                        <h4 class="text-sm uppercase tracking-widest text-zinc-400 font-bold">Data Visualization</h4>
-                        <select id="chartTypeToggle" class="bg-zinc-900 border border-zinc-600 text-zinc-300 text-xs rounded px-2 py-1 focus:outline-none focus:border-orange-500">
+                        <h4 class="text-xs uppercase tracking-widest text-blue-300 font-bold">Visualization Matrix</h4>
+                        <select id="chartTypeToggle" class="bg-black/50 border border-white/20 text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-400 backdrop-blur-sm">
                             <option value="bar">Bar Chart</option>
                             <option value="line">Line Chart</option>
                             <option value="doughnut">Doughnut Chart</option>
                         </select>
                     </div>
-                    <div class="bg-zinc-900 p-4 rounded-xl border border-zinc-700 relative shadow-inner" style="height: 350px;">
+                    <div class="bg-black/40 p-4 rounded-lg border border-white/10 relative shadow-inner" style="height: 350px;">
                         <canvas id="dataChart"></canvas>
-                        <div id="noChartMsg" class="hidden absolute inset-0 flex items-center justify-center text-zinc-500 text-sm font-mono">No numeric pairings detected.</div>
+                        <div id="noChartMsg" class="hidden absolute inset-0 flex items-center justify-center text-zinc-400 text-xs font-mono">No numeric pairings detected in payload.</div>
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-zinc-700">
-                    <h4 class="text-sm uppercase tracking-widest text-zinc-400 font-bold mb-4">Ledger Preview Snapshot</h4>
-                    <div id="tableContainer" class="overflow-x-auto bg-zinc-900 rounded-xl border border-zinc-700 shadow-inner"></div>
+                <div class="pt-6 mt-6 border-t border-white/10">
+                    <h4 class="text-xs uppercase tracking-widest text-blue-300 font-bold mb-4">Data Array Preview</h4>
+                    <div id="tableContainer" class="overflow-x-auto bg-black/40 rounded-lg border border-white/10 shadow-inner max-h-64 overflow-y-auto p-1"></div>
                 </div>
             </div>
             
-            <div id="emptyState" class="bg-zinc-800/50 border border-dashed border-zinc-700 rounded-xl h-full flex flex-col items-center justify-center text-zinc-500 p-12">
-                <svg class="h-16 w-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div id="emptyState" class="glass-panel border-2 border-dashed border-white/20 rounded-xl h-full flex flex-col items-center justify-center text-zinc-400 p-12 min-h-[400px]">
+                <svg class="h-16 w-16 mb-4 opacity-30 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <p class="font-medium text-lg">Awaiting Intelligence Upload</p>
-                <p class="text-sm mt-1">Processed legacy data will visualize here.</p>
+                <p class="font-medium text-lg text-white">Awaiting Intelligence Upload</p>
+                <p class="text-sm mt-1 text-center max-w-xs">Processed legacy ledgers or live agent data will visualize here.</p>
             </div>
         </div>
     </main>
 
     <script>
+        // --- SECURE MODAL CLOSE (PURGES MEMORY) ---
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.add('hidden');
+            const displayObj = document.getElementById('apiKeyDisplay');
+            if(displayObj) displayObj.value = '';
+            
+            const area = document.getElementById('keyDisplayArea');
+            if(area) area.classList.add('hidden');
+            
+            const btn = document.getElementById('genKeyBtn');
+            if(btn) {
+                btn.innerText = 'Generate Enterprise API Key';
+                btn.className = 'w-full bg-blue-600/80 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition shadow-lg border border-blue-400/50 backdrop-blur-md text-sm';
+                btn.disabled = false;
+            }
+        }
+
         // --- WEBSOCKETS LOGIC ---
-        const ws = new WebSocket((window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/vitals');
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const ws = new WebSocket(wsProtocol + window.location.host + '/ws/vitals');
         
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
             
             const statusEl = document.getElementById('agent-status');
             statusEl.textContent = 'SECURE LINK ACTIVE';
-            statusEl.classList.remove('text-yellow-500', 'text-red-500');
-            statusEl.classList.add('text-green-500');
+            statusEl.className = 'text-green-400 font-mono font-bold text-xs border border-green-500/50 rounded px-2 py-0.5 bg-green-500/10';
 
-            const qps = data.db_queries_per_sec || data.qps || data.packets || data.traffic || "0";
+            const qps = data.qps || data.records_count || data.packets || data.traffic || "0";
             document.getElementById('qps-display').textContent = qps;
 
             const terminal = document.getElementById('live-terminal');
             if (terminal) {
-                const logLine = document.createElement('div');
-                logLine.textContent = `[${new Date().toLocaleTimeString()}] INBOUND PKT: ${qps} DETECTED`;
-                logLine.className = 'text-green-400 font-bold';
+                const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                const logLine = document.createElement('p');
+                logLine.textContent = `[${now}] INBOUND DATA PULSE: ${qps} ROWS DETECTED`;
+                logLine.className = 'text-blue-300 font-bold';
                 terminal.appendChild(logLine);
                 terminal.scrollTop = terminal.scrollHeight;
             }
@@ -248,8 +297,7 @@
         ws.onclose = function() {
             const statusEl = document.getElementById('agent-status');
             statusEl.textContent = 'CONNECTION LOST';
-            statusEl.classList.remove('text-green-500', 'text-yellow-500');
-            statusEl.classList.add('text-red-500');
+            statusEl.className = 'text-red-400 font-mono font-bold text-xs border border-red-500/50 rounded px-2 py-0.5 bg-red-500/10';
         };
 
         // --- DASHBOARD UI LOGIC ---
@@ -269,7 +317,7 @@
         if (fileInput) {
             fileInput.addEventListener('change', function() {
                 if (this.files && this.files[0]) {
-                    uploadPrompt.innerHTML = '<span class="text-orange-500 font-bold">' + this.files[0].name + '</span>';
+                    uploadPrompt.innerHTML = '<span class="text-blue-300 font-bold">' + this.files[0].name + '</span>';
                 }
             });
         }
@@ -280,8 +328,8 @@
             
             const ctx = document.getElementById('dataChart').getContext('2d');
             const bgColors = type === 'doughnut' 
-                ? ['#f97316', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#eab308', '#06b6d4', '#64748b', '#ec4899', '#14b8a6']
-                : '#3b82f6';
+                ? ['rgba(59, 130, 246, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(139, 92, 246, 0.8)', 'rgba(244, 63, 94, 0.8)', 'rgba(234, 179, 8, 0.8)', 'rgba(6, 182, 212, 0.8)']
+                : 'rgba(59, 130, 246, 0.6)';
 
             window.myChart = new Chart(ctx, {
                 type: type,
@@ -291,7 +339,7 @@
                         label: currentChartData.title,
                         data: currentChartData.values,
                         backgroundColor: bgColors,
-                        borderColor: type === 'line' ? '#f97316' : 'transparent',
+                        borderColor: type === 'line' ? '#60a5fa' : 'rgba(255,255,255,0.1)',
                         borderWidth: 2,
                         borderRadius: type === 'bar' ? 4 : 0,
                         tension: 0.3,
@@ -301,12 +349,13 @@
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false,
+                    color: '#cbd5e1',
                     plugins: { 
-                        legend: { display: type === 'doughnut', position: 'right', labels: { color: '#d4d4d8' } }
+                        legend: { display: type === 'doughnut', position: 'right', labels: { color: '#e2e8f0' } }
                     },
                     scales: type === 'doughnut' ? {} : { 
-                        x: { ticks: { color: '#a1a1aa' }, grid: { color: '#3f3f46' } }, 
-                        y: { ticks: { color: '#a1a1aa' }, grid: { color: '#3f3f46' } } 
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } }, 
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } } 
                     }
                 }
             });
@@ -324,7 +373,10 @@
             document.getElementById('resFormat').innerText = data.ingestion_metadata.format_detected;
             document.getElementById('metricBadge').innerText = data.ingestion_metadata.total_records_processed + ' Rows';
             document.getElementById('tableContainer').innerHTML = data.preview_html;
-            downloadRawBtn.href = '/download/' + data.ingestion_metadata.filename;
+            
+            if(downloadRawBtn) {
+                downloadRawBtn.href = '/download/' + data.ingestion_metadata.filename;
+            }
             
             if (data.chart_data) {
                 currentChartData = data.chart_data;
@@ -338,11 +390,13 @@
                 document.getElementById('noChartMsg').classList.remove('hidden');
             }
             resultsDisplay.classList.remove('hidden');
+            resultsDisplay.classList.add('flex', 'flex-col');
         }
 
         async function loadHistoricalData(filename) {
             emptyState.classList.add('hidden');
             resultsDisplay.classList.remove('hidden');
+            resultsDisplay.classList.add('flex', 'flex-col');
             loadingOverlay.classList.remove('hidden');
             
             try {
@@ -352,7 +406,7 @@
                 if (response.ok) {
                     populateCanvas(data);
                 } else {
-                    alert('Extraction failure: ' + (data.detail || 'Could not fetch from S3'));
+                    alert('Extraction failure: ' + (data.detail || 'Could not fetch from Database/S3'));
                 }
             } catch (err) {
                 alert('Connection to backend infrastructure dropped.');
@@ -367,7 +421,7 @@
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
                 
-                processBtn.innerText = "Analyzing Matrix & Uploading to S3...";
+                processBtn.innerText = "Analyzing Array & Uploading...";
                 processBtn.classList.add("opacity-50", "cursor-not-allowed");
 
                 try {
@@ -381,13 +435,13 @@
                             historyTable.innerHTML = '';
                         }
                         const newRow = document.createElement('tr');
-                        newRow.className = "hover:bg-zinc-700/40 transition group cursor-pointer";
+                        newRow.className = "flex justify-between items-center bg-white/5 p-2 rounded border border-white/10 hover:bg-white/10 cursor-pointer transition group";
                         newRow.onclick = () => loadHistoricalData(data.ingestion_metadata.filename);
                         newRow.innerHTML = `
-                            <td class="py-3 max-w-[150px]">
-                                <span class="text-blue-400 font-mono truncate block group-hover:text-orange-400 transition" title="${data.ingestion_metadata.filename}">${data.ingestion_metadata.filename}</span>
+                            <td class="max-w-[150px]">
+                                <span class="text-blue-200 font-mono text-xs truncate block group-hover:text-white transition" title="${data.ingestion_metadata.filename}">${data.ingestion_metadata.filename}</span>
                             </td>
-                            <td class="py-3 text-zinc-300 font-mono text-right group-hover:text-white transition">${data.ingestion_metadata.total_records_processed} <span class="text-zinc-500 text-xs">rows</span></td>
+                            <td class="text-white font-mono text-xs text-right">${data.ingestion_metadata.total_records_processed} <span class="text-zinc-400">rows</span></td>
                         `;
                         historyTable.prepend(newRow);
 
@@ -425,24 +479,21 @@
                         apiKeyDisplay.value = data.api_key;
                         keyDisplayArea.classList.remove('hidden');
                         genKeyBtn.innerText = "Key Generated (Click key to copy)";
-                        genKeyBtn.classList.replace('bg-blue-600', 'bg-zinc-700');
+                        genKeyBtn.className = 'w-full bg-white/10 text-white font-bold py-2 rounded-lg transition border border-white/20 text-sm';
                         
-                        // Copy to clipboard functionality
                         apiKeyDisplay.onclick = function() {
                             this.select();
                             document.execCommand('copy');
                             genKeyBtn.innerText = "Copied to Clipboard!";
-                            genKeyBtn.classList.replace('bg-zinc-700', 'bg-green-600');
+                            genKeyBtn.className = 'w-full bg-green-600/80 text-white font-bold py-2 rounded-lg border border-green-400/50 transition shadow-lg text-sm';
                         };
                     } else {
                         alert("Failed to generate key: " + (data.detail || "Database Error"));
-                        genKeyBtn.innerText = "Generate Enterprise API Key";
-                        genKeyBtn.disabled = false;
+                        closeProfileModal(); // Resets button state
                     }
                 } catch (err) {
                     alert("Connection to the Mothership failed.");
-                    genKeyBtn.innerText = "Generate Enterprise API Key";
-                    genKeyBtn.disabled = false;
+                    closeProfileModal();
                 }
             });
         }
