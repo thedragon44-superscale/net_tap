@@ -26,7 +26,8 @@ AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
 
 # --- SMTP / JWT CONFIGURATION ---
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+# Hard fallback to 465 if Render env variable isn't updated yet
+SMTP_PORT = int(os.getenv("SMTP_PORT", 465)) 
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASS = os.getenv("SMTP_PASS")
 JWT_SECRET = os.getenv("JWT_SECRET", "fallback_dev_key_change_in_prod")
@@ -102,18 +103,17 @@ async def websocket_endpoint(websocket: WebSocket):
 # =====================================================================
 
 def send_otp_email(target_email: str, code: str):
-    """Fires the 6-digit payload via SMTP in the background"""
+    """Fires the 6-digit payload via Strict SSL (Port 465) in the background"""
     try:
-        print(f"[*] Initiating SMTP connection to {SMTP_SERVER}:{SMTP_PORT} for {target_email}...")
+        print(f"[*] Initiating SSL SMTP connection to {SMTP_SERVER}:{SMTP_PORT} for {target_email}...")
         msg = MIMEText(f"Your Dragon HMS security clearance code is: {code}\n\nThis code expires in 10 minutes.")
         msg['Subject'] = 'Dragon HMS - Authentication Code'
         msg['From'] = SMTP_USER
         msg['To'] = target_email
 
-        # Added a strict 10-second timeout so it doesn't hang forever
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
-        server.set_debuglevel(1) # This forces the server to print EXACTLY what Google says back to it
-        server.starttls()
+        # 🟢 STRICT SSL ENFORCEMENT (Bypasses IPv6 bugs)
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10)
+        server.set_debuglevel(1) 
         server.login(SMTP_USER, SMTP_PASS)
         server.send_message(msg)
         server.quit()
@@ -160,7 +160,7 @@ async def process_register(request: Request, background_tasks: BackgroundTasks, 
     db.add(new_user)
     db.commit()
     
-    # 🟢 NEW: Process email in the background so the UI loads instantly
+    # Process email in the background
     background_tasks.add_task(send_otp_email, new_user.email, otp)
     
     redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
@@ -181,7 +181,7 @@ async def process_login(request: Request, background_tasks: BackgroundTasks, ema
         user.otp_expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
         db.commit()
         
-        # 🟢 NEW: Process email in the background
+        # Process email in the background
         background_tasks.add_task(send_otp_email, user.email, otp)
         
         redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
