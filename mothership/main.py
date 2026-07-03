@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Header, Request, status, Form, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, HTTPException, Header, Request, status, Form, Response, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -102,24 +102,28 @@ async def websocket_endpoint(websocket: WebSocket):
 # =====================================================================
 
 def send_otp_email(target_email: str, code: str):
-    """Fires the 6-digit payload via SMTP"""
+    """Fires the 6-digit payload via SMTP in the background"""
     try:
+        print(f"[*] Initiating SMTP connection to {SMTP_SERVER}:{SMTP_PORT} for {target_email}...")
         msg = MIMEText(f"Your Dragon HMS security clearance code is: {code}\n\nThis code expires in 10 minutes.")
         msg['Subject'] = 'Dragon HMS - Authentication Code'
         msg['From'] = SMTP_USER
         msg['To'] = target_email
 
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        # Added a strict 10-second timeout so it doesn't hang forever
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
+        server.set_debuglevel(1) # This forces the server to print EXACTLY what Google says back to it
         server.starttls()
         server.login(SMTP_USER, SMTP_PASS)
         server.send_message(msg)
         server.quit()
-        print(f"[+] OTP sent to {target_email}")
+        print(f"[+] SUCCESS: OTP sent to {target_email}")
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"[!] SMTP AUTH ERROR: Check your 16-letter App Password and SMTP_USER. Detail: {e}")
     except Exception as e:
-        print(f"[!] Email dispatch failed: {e}")
+        print(f"[!] CRITICAL EMAIL FAILURE: {e}")
 
 def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)):
-    """Extracts the JWT from the browser cookie and maps it to the real user."""
     token = request.cookies.get("dragon_session")
     if not token:
         return None
@@ -143,7 +147,7 @@ async def serve_register(request: Request):
     return templates.TemplateResponse(request=request, name="register.html")
 
 @app.post("/register")
-async def process_register(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+async def process_register(request: Request, background_tasks: BackgroundTasks, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == email).first():
         return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Email already registered."})
     
@@ -156,14 +160,15 @@ async def process_register(request: Request, email: str = Form(...), password: s
     db.add(new_user)
     db.commit()
     
-    send_otp_email(new_user.email, otp)
+    # 🟢 NEW: Process email in the background so the UI loads instantly
+    background_tasks.add_task(send_otp_email, new_user.email, otp)
     
     redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
     redirect.set_cookie(key="pending_user", value=new_user.email, httponly=True)
     return redirect
 
 @app.post("/login")
-async def process_login(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+async def process_login(request: Request, background_tasks: BackgroundTasks, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
     
     if not user or user.hashed_password != password:
@@ -175,13 +180,14 @@ async def process_login(request: Request, email: str = Form(...), password: str 
         user.otp_code = otp
         user.otp_expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
         db.commit()
-        send_otp_email(user.email, otp)
+        
+        # 🟢 NEW: Process email in the background
+        background_tasks.add_task(send_otp_email, user.email, otp)
         
         redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
         redirect.set_cookie(key="pending_user", value=user.email, httponly=True)
         return redirect
 
-    # Valid user, fully verified. Issue JWT.
     token_payload = {"sub": user.email, "exp": datetime.datetime.now() + datetime.timedelta(days=1)}
     session_token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -221,7 +227,6 @@ async def process_verify(request: Request, otp_code: str = Form(...), db: Sessio
 @app.get("/dashboard")
 async def serve_dashboard(request: Request, db: Session = Depends(get_db)):
     user = get_current_user_from_cookie(request, db)
-    # 🟢 STRICT PERIMETER: If you don't have a valid JWT cookie, back to the Gateway.
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -266,7 +271,6 @@ async def create_checkout_session(request: Request):
 
 @app.post("/api/users/generate-api-key")
 async def generate_api_key(request: Request, db: Session = Depends(get_db)):
-    # 🟢 STRICT PERIMETER: Key generation is locked behind JWT authentication
     current_user = get_current_user_from_cookie(request, db)
     if not current_user:
         raise HTTPException(status_code=401, detail="Unauthorized")
