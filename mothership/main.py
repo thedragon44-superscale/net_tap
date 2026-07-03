@@ -144,36 +144,49 @@ async def serve_register(request: Request):
 
 @app.post("/register")
 async def process_register(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    # Check if user exists
     if db.query(User).filter(User.email == email).first():
         return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Email already registered."})
     
-    # Save new user (In production, hash this password!)
     new_user = User(email=email, hashed_password=password)
+    
+    otp = str(secrets.randbelow(899999) + 100000)
+    new_user.otp_code = otp
+    new_user.otp_expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
+    
     db.add(new_user)
     db.commit()
     
-    # Redirect to login
-    return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Registration successful. Please log in."})
+    send_otp_email(new_user.email, otp)
+    
+    redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
+    redirect.set_cookie(key="pending_user", value=new_user.email, httponly=True)
+    return redirect
 
 @app.post("/login")
-async def process_login(response: Response, request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+async def process_login(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
+    
     if not user or user.hashed_password != password:
         return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Invalid credentials."})
 
-    # Generate 6-digit OTP
-    otp = str(secrets.randbelow(899999) + 100000)
-    user.otp_code = otp
-    user.otp_expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
-    db.commit()
+    # If the user registered but never verified, resend a fresh OTP
+    if user.otp_code:
+        otp = str(secrets.randbelow(899999) + 100000)
+        user.otp_code = otp
+        user.otp_expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
+        db.commit()
+        send_otp_email(user.email, otp)
+        
+        redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
+        redirect.set_cookie(key="pending_user", value=user.email, httponly=True)
+        return redirect
 
-    # Dispatch email
-    send_otp_email(user.email, otp)
+    # Valid user, fully verified. Issue JWT.
+    token_payload = {"sub": user.email, "exp": datetime.datetime.now() + datetime.timedelta(days=1)}
+    session_token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-    # Set a temporary cookie just to remember who is trying to log in
-    redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
-    redirect.set_cookie(key="pending_user", value=user.email, httponly=True)
+    redirect = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    redirect.set_cookie(key="dragon_session", value=session_token, httponly=True)
     return redirect
 
 @app.get("/verify")
@@ -190,20 +203,16 @@ async def process_verify(request: Request, otp_code: str = Form(...), db: Sessio
 
     user = db.query(User).filter(User.email == pending_email).first()
     
-    # Validate OTP
     if not user or user.otp_code != otp_code or user.otp_expires_at < datetime.datetime.now():
         return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Invalid or expired OTP."})
 
-    # Clear OTP
     user.otp_code = None
     user.otp_expires_at = None
     db.commit()
 
-    # Generate persistent JWT Session
     token_payload = {"sub": user.email, "exp": datetime.datetime.now() + datetime.timedelta(days=1)}
     session_token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-    # Issue cookie and redirect
     response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(key="dragon_session", value=session_token, httponly=True)
     response.delete_cookie("pending_user")
@@ -211,8 +220,8 @@ async def process_verify(request: Request, otp_code: str = Form(...), db: Sessio
 
 @app.get("/dashboard")
 async def serve_dashboard(request: Request, db: Session = Depends(get_db)):
-    # 🟢 DYNAMIC USER LOADING 
     user = get_current_user_from_cookie(request, db)
+    # 🟢 STRICT PERIMETER: If you don't have a valid JWT cookie, back to the Gateway.
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -223,7 +232,7 @@ async def serve_dashboard(request: Request, db: Session = Depends(get_db)):
         request=request, 
         name="dashboard.html", 
         context={
-            "user_email": user.email, # Real email is now injected into the UI!
+            "user_email": user.email,
             "user_tier": "enterprise",
             "rating_stars": "⭐⭐⭐⭐⭐",
             "rating_score": "5.0",
@@ -257,6 +266,7 @@ async def create_checkout_session(request: Request):
 
 @app.post("/api/users/generate-api-key")
 async def generate_api_key(request: Request, db: Session = Depends(get_db)):
+    # 🟢 STRICT PERIMETER: Key generation is locked behind JWT authentication
     current_user = get_current_user_from_cookie(request, db)
     if not current_user:
         raise HTTPException(status_code=401, detail="Unauthorized")
