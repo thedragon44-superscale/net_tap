@@ -161,10 +161,10 @@
                 {% endif %}
 
                 <div class="flex-1 font-mono text-xs text-green-400 space-y-1 overflow-y-auto bg-black/60 p-4 rounded-lg border border-white/10 shadow-inner" id="live-terminal">
-                    <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] System initialized securely.</p>
-                    <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] User {{ user_email }} authenticated.</p>
-                    <p>[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] Establishing connection to Mothership...</p>
-                    <p class="animate-pulse text-zinc-400">[{{ "now"|date("%Y-%m-%d %H:%M:%S") }}] Awaiting agent data pulse...</p>
+                    <p>[SYSTEM_BOOT] System initialized securely.</p>
+                    <p>[AUTH_VERIFIED] User {{ user_email }} authenticated.</p>
+                    <p>[SECURE_UPLINK] Establishing connection to Mothership...</p>
+                    <p class="animate-pulse text-zinc-400">[LISTENING] Awaiting agent data pulse...</p>
                 </div>
 
                 {% if user_tier == 'enterprise' %}
