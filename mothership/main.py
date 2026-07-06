@@ -10,8 +10,8 @@ import os
 import json
 import boto3
 import stripe
-import smtplib
-from email.mime.text import MIMEText
+import urllib.request
+import urllib.error
 import jwt
 from dotenv import load_dotenv
 
@@ -24,12 +24,9 @@ AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
 
-# --- SMTP / JWT CONFIGURATION ---
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-# Hard fallback to 465 if Render env variable isn't updated yet
-SMTP_PORT = int(os.getenv("SMTP_PORT", 465)) 
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASS = os.getenv("SMTP_PASS")
+# --- AUTH & API CONFIGURATION ---
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+SMTP_USER = os.getenv("SMTP_USER", "flightg@thedragonhms.com") # Used as sender email
 JWT_SECRET = os.getenv("JWT_SECRET", "fallback_dev_key_change_in_prod")
 JWT_ALGORITHM = "HS256"
 
@@ -103,25 +100,41 @@ async def websocket_endpoint(websocket: WebSocket):
 # =====================================================================
 
 def send_otp_email(target_email: str, code: str):
-    """Fires the 6-digit payload via Strict SSL (Port 465) in the background"""
-    try:
-        print(f"[*] Initiating SSL SMTP connection to {SMTP_SERVER}:{SMTP_PORT} for {target_email}...")
-        msg = MIMEText(f"Your Dragon HMS security clearance code is: {code}\n\nThis code expires in 10 minutes.")
-        msg['Subject'] = 'Dragon HMS - Authentication Code'
-        msg['From'] = SMTP_USER
-        msg['To'] = target_email
+    """Fires the 6-digit payload via Brevo HTTP API (Bypasses Render SMTP Blocks)"""
+    if not BREVO_API_KEY:
+        print("[!] EMAIL FAILURE: BREVO_API_KEY environment variable is missing.")
+        return
 
-        # 🟢 STRICT SSL ENFORCEMENT (Bypasses IPv6 bugs)
-        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10)
-        server.set_debuglevel(1) 
-        server.login(SMTP_USER, SMTP_PASS)
-        server.send_message(msg)
-        server.quit()
-        print(f"[+] SUCCESS: OTP sent to {target_email}")
-    except smtplib.SMTPAuthenticationError as e:
-        print(f"[!] SMTP AUTH ERROR: Check your 16-letter App Password and SMTP_USER. Detail: {e}")
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+    
+    # Standardize the payload format for Brevo's REST API
+    payload = {
+        "sender": {"name": "Dragon Command", "email": SMTP_USER},
+        "to": [{"email": target_email}],
+        "subject": "Dragon HMS - Authentication Code",
+        "htmlContent": f"<p>Your Dragon HMS security clearance code is: <strong style='font-size: 24px; letter-spacing: 4px;'>{code}</strong></p><p>This code expires in 10 minutes.</p>"
+    }
+    
+    data = json.dumps(payload).encode("utf-8")
+    
+    try:
+        print(f"[*] Dispatching OTP to {target_email} via Brevo HTTP API...")
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status == 201:
+                print(f"[+] SUCCESS: OTP delivered to HTTP relay for {target_email}")
+            else:
+                print(f"[!] API Warning: Received unexpected status {response.status}")
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
+        print(f"[!] BREVO API REJECTED REQUEST: {e.code} - {error_body}")
     except Exception as e:
-        print(f"[!] CRITICAL EMAIL FAILURE: {e}")
+        print(f"[!] CRITICAL HTTP EMAIL FAILURE: {e}")
 
 def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("dragon_session")
