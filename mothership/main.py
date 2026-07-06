@@ -26,7 +26,7 @@ AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
 
 # --- AUTH & API CONFIGURATION ---
 BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-SMTP_USER = os.getenv("SMTP_USER", "flightg@thedragonhms.com") # Used as sender email
+SMTP_USER = os.getenv("SMTP_USER", "flightg@thedragonhms.com") 
 JWT_SECRET = os.getenv("JWT_SECRET", "fallback_dev_key_change_in_prod")
 JWT_ALGORITHM = "HS256"
 
@@ -40,6 +40,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    tier = Column(String, default="free") # 🟢 NEW: Account tier enforcement
     enterprise_api_key = Column(String, unique=True, index=True, nullable=True)
     otp_code = Column(String, nullable=True)
     otp_expires_at = Column(DateTime, nullable=True)
@@ -100,7 +101,6 @@ async def websocket_endpoint(websocket: WebSocket):
 # =====================================================================
 
 def send_otp_email(target_email: str, code: str):
-    """Fires the 6-digit payload via Brevo HTTP API (Bypasses Render SMTP Blocks)"""
     if not BREVO_API_KEY:
         print("[!] EMAIL FAILURE: BREVO_API_KEY environment variable is missing.")
         return
@@ -112,7 +112,6 @@ def send_otp_email(target_email: str, code: str):
         "content-type": "application/json"
     }
     
-    # Standardize the payload format for Brevo's REST API
     payload = {
         "sender": {"name": "Dragon Command", "email": SMTP_USER},
         "to": [{"email": target_email}],
@@ -173,7 +172,6 @@ async def process_register(request: Request, background_tasks: BackgroundTasks, 
     db.add(new_user)
     db.commit()
     
-    # Process email in the background
     background_tasks.add_task(send_otp_email, new_user.email, otp)
     
     redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
@@ -187,14 +185,12 @@ async def process_login(request: Request, background_tasks: BackgroundTasks, ema
     if not user or user.hashed_password != password:
         return templates.TemplateResponse(request=request, name="index.html", context={"error_message": "Invalid credentials."})
 
-    # If the user registered but never verified, resend a fresh OTP
     if user.otp_code:
         otp = str(secrets.randbelow(899999) + 100000)
         user.otp_code = otp
         user.otp_expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
         db.commit()
         
-        # Process email in the background
         background_tasks.add_task(send_otp_email, user.email, otp)
         
         redirect = RedirectResponse(url="/verify", status_code=status.HTTP_303_SEE_OTHER)
@@ -238,10 +234,19 @@ async def process_verify(request: Request, otp_code: str = Form(...), db: Sessio
     return response
 
 @app.get("/dashboard")
-async def serve_dashboard(request: Request, db: Session = Depends(get_db)):
+async def serve_dashboard(request: Request, session_id: str = None, db: Session = Depends(get_db)):
     user = get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+    # 🟢 NEW: Stripe Payment Success Handler
+    if session_id and user.tier != "enterprise":
+        try:
+            # We catch the redirect from Stripe and upgrade the user
+            user.tier = "enterprise"
+            db.commit()
+        except Exception as e:
+            print(f"Failed to upgrade user: {e}")
 
     user_history = db.query(Telemetry).filter(Telemetry.owner_email == user.email).order_by(Telemetry.id.desc()).limit(10).all()
     formatted_history = [{"filename": f"{r.scan_type.upper()}_CAPTURE_{r.timestamp}.json", "records_count": r.records_count} for r in user_history]
@@ -251,7 +256,7 @@ async def serve_dashboard(request: Request, db: Session = Depends(get_db)):
         name="dashboard.html", 
         context={
             "user_email": user.email,
-            "user_tier": "enterprise",
+            "user_tier": user.tier, # Passes the REAL tier to the frontend
             "rating_stars": "⭐⭐⭐⭐⭐",
             "rating_score": "5.0",
             "history": formatted_history 
@@ -287,6 +292,10 @@ async def generate_api_key(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user_from_cookie(request, db)
     if not current_user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # 🟢 NEW: Backend enforcement. Only Enterprise accounts can generate keys.
+    if current_user.tier != "enterprise":
+        raise HTTPException(status_code=403, detail="Enterprise license required.")
         
     new_key = f"drgn_live_{secrets.token_urlsafe(32)}"
     try:
