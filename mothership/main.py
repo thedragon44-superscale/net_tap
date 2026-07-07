@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, Header, Request, status, Fo
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 import secrets
 import datetime
@@ -40,18 +40,22 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    tier = Column(String, default="free") # 🟢 NEW: Account tier enforcement
+    tier = Column(String, default="free") 
     enterprise_api_key = Column(String, unique=True, index=True, nullable=True)
     otp_code = Column(String, nullable=True)
     otp_expires_at = Column(DateTime, nullable=True)
 
+# 🟢 UPGRADED: Synergy Datacube Schema
 class Telemetry(Base):
     __tablename__ = "telemetry"
     id = Column(Integer, primary_key=True, index=True)
     owner_email = Column(String, index=True)
-    scan_type = Column(String)
     timestamp = Column(String)
-    records_count = Column(Integer)
+    foot_traffic_count = Column(Integer, default=0)
+    sales_count = Column(Integer, default=0)
+    revenue = Column(Float, default=0.0)
+    flags_count = Column(Integer, default=0)
+    raw_payload = Column(String) 
 
 Base.metadata.create_all(bind=engine)
 
@@ -239,24 +243,23 @@ async def serve_dashboard(request: Request, session_id: str = None, db: Session 
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
-    # 🟢 NEW: Stripe Payment Success Handler
     if session_id and user.tier != "enterprise":
         try:
-            # We catch the redirect from Stripe and upgrade the user
             user.tier = "enterprise"
             db.commit()
         except Exception as e:
             print(f"Failed to upgrade user: {e}")
 
+    # 🟢 Fetch the 10 most recent datacubes for the history sidebar
     user_history = db.query(Telemetry).filter(Telemetry.owner_email == user.email).order_by(Telemetry.id.desc()).limit(10).all()
-    formatted_history = [{"filename": f"{r.scan_type.upper()}_CAPTURE_{r.timestamp}.json", "records_count": r.records_count} for r in user_history]
+    formatted_history = [{"timestamp": r.timestamp, "sales": r.sales_count, "traffic": r.foot_traffic_count} for r in user_history]
 
     return templates.TemplateResponse(
         request=request, 
         name="dashboard.html", 
         context={
             "user_email": user.email,
-            "user_tier": user.tier, # Passes the REAL tier to the frontend
+            "user_tier": user.tier, 
             "rating_stars": "⭐⭐⭐⭐⭐",
             "rating_score": "5.0",
             "history": formatted_history 
@@ -293,7 +296,6 @@ async def generate_api_key(request: Request, db: Session = Depends(get_db)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     
-    # 🟢 NEW: Backend enforcement. Only Enterprise accounts can generate keys.
     if current_user.tier != "enterprise":
         raise HTTPException(status_code=403, detail="Enterprise license required.")
         
@@ -319,27 +321,48 @@ async def ingest_telemetry(
     if not associated_user:
         raise HTTPException(status_code=403, detail="Invalid API Key.")
         
+    # 🟢 UPGRADED: Synergy Datacube Parsing
     payload = await request.json()
-    scan_type = payload.get("scan_type", "unknown")
-    scan_data = payload.get("scan_data", {})
-    record_count = len(scan_data) if isinstance(scan_data, (list, dict)) else 0
-    timestamp = datetime.datetime.now().strftime("%H%M%S")
-    file_name = f"{associated_user.id}/{scan_type}_CAPTURE_{timestamp}.json"
+    
+    foot_traffic = payload.get("foot_traffic", [])
+    pos_sales = payload.get("pos_sales", [])
+    network_flags = payload.get("network_flags", [])
+    
+    ft_count = len(foot_traffic)
+    sales_count = len(pos_sales)
+    total_revenue = sum(float(item.get("amount_usd", 0.0)) for item in pos_sales)
+    flags_count = len(network_flags)
+    
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # AWS S3 Backup
     try:
         s3_client = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
+        file_name = f"{associated_user.id}/DATACUBE_{timestamp.replace(' ', '_')}.json"
         s3_client.put_object(Bucket=AWS_BUCKET_NAME, Key=file_name, Body=json.dumps(payload).encode('utf-8'))
     except Exception as e:
         print(f"[!] S3 Upload Failed: {str(e)}")
 
+    # Store structured analytics in database
     new_telemetry = Telemetry(
         owner_email=associated_user.email,
-        scan_type=scan_type,
         timestamp=timestamp,
-        records_count=record_count
+        foot_traffic_count=ft_count,
+        sales_count=sales_count,
+        revenue=total_revenue,
+        flags_count=flags_count,
+        raw_payload=json.dumps(payload)
     )
     db.add(new_telemetry)
     db.commit()
     
-    await manager.broadcast({"qps": record_count, "scan_type": scan_type})
+    # Broadcast parsed intelligence to the live UI
+    await manager.broadcast({
+        "foot_traffic": ft_count,
+        "sales": sales_count,
+        "revenue": round(total_revenue, 2),
+        "flags": flags_count,
+        "network_flags": network_flags 
+    })
+    
     return {"status": "success", "owner": associated_user.email}
