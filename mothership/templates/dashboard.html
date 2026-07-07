@@ -112,51 +112,46 @@
     <main class="max-w-7xl mx-auto mt-8 px-4 grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
         
         <div class="lg:col-span-1 space-y-6">
+            
             <div class="glass-panel metallic-border p-6 relative">
                 <h2 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">Command Center</h2>
                 <div class="space-y-4 mt-4">
                     <div class="flex justify-between items-center text-sm bg-white/5 p-3 rounded border border-white/10">
-                        <span class="text-zinc-300">Agent Status</span>
-                        <span id="agent-status" class="text-yellow-400 font-mono font-bold text-xs border border-yellow-500/50 rounded px-2 py-0.5 bg-yellow-500/10">AWAITING CONNECTION</span>
+                        <span class="text-zinc-300">Agent Link</span>
+                        <span id="agent-status" class="text-yellow-400 font-mono font-bold text-xs border border-yellow-500/50 rounded px-2 py-0.5 bg-yellow-500/10">AWAITING PULSE</span>
                     </div>
                     <div class="flex justify-between items-center text-sm bg-white/5 p-3 rounded border border-white/10">
-                        <span class="text-zinc-300">Network QPS</span>
-                        <span id="qps-display" class="font-mono text-xl text-white font-bold">0</span>
+                        <span class="text-zinc-300">Live Foot Traffic</span>
+                        <span id="live-traffic" class="font-mono text-xl text-blue-400 font-bold">0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm bg-white/5 p-3 rounded border border-white/10">
+                        <span class="text-zinc-300">POS Sales</span>
+                        <span id="live-sales" class="font-mono text-xl text-green-400 font-bold">0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm bg-white/5 p-3 rounded border border-white/10">
+                        <span class="text-zinc-300">Captured Revenue</span>
+                        <span id="live-revenue" class="font-mono text-xl text-yellow-400 font-bold">$0.00</span>
                     </div>
                 </div>
             </div>
 
             <div class="glass-panel rounded-xl p-6 relative">
-                <h3 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">Legacy Data Ingestion</h3>
-                <form id="uploadForm" class="space-y-4">
-                    <div class="border-2 border-dashed border-white/30 rounded-xl p-6 text-center hover:border-blue-400 hover:bg-blue-900/20 transition bg-black/20 cursor-pointer relative group backdrop-blur-sm">
-                        <input type="file" id="fileInput" name="file" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                        <svg class="mx-auto h-10 w-10 text-zinc-400 group-hover:text-blue-400 transition mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <p id="uploadPrompt" class="text-zinc-300 font-medium text-xs">Browse or drag ledger here</p>
-                    </div>
-                    <button id="processBtn" type="submit" class="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white shadow-lg backdrop-blur-md font-bold py-2 rounded-lg transition cursor-pointer">Process Ledger</button>
-                </form>
-            </div>
-
-            <div class="glass-panel rounded-xl p-6 relative">
                 <img src="/static/scripts_icon.png" alt="Logs" class="absolute top-4 right-4 w-10 h-10 drop-shadow-lg opacity-60">
-                <h3 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">Recent Operations</h3>
+                <h3 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">Datacube Ledgers</h3>
                 <div class="overflow-x-auto h-48 overflow-y-auto pr-2">
                     <table class="w-full text-left text-sm">
                         <tbody id="historyTable" class="space-y-2 flex flex-col">
                             {% if history %}
                                 {% for r in history %}
-                                <tr class="flex justify-between items-center bg-white/5 p-2 rounded border border-white/10 hover:bg-white/10 cursor-pointer transition group" onclick="loadHistoricalData('{{ r.filename }}');">
-                                    <td class="max-w-[150px]">
-                                        <span class="text-blue-200 font-mono text-xs truncate block group-hover:text-white transition" title="{{ r.filename }}">{{ r.filename }}</span>
+                                <tr class="flex justify-between items-center bg-white/5 p-2 rounded border border-white/10 hover:bg-white/10 transition group">
+                                    <td class="max-w-[120px]">
+                                        <span class="text-blue-200 font-mono text-xs truncate block group-hover:text-white transition">{{ r.timestamp }}</span>
                                     </td>
-                                    <td class="text-white font-mono text-xs text-right">{{ r.records_count }} <span class="text-zinc-400">rows</span></td>
+                                    <td class="text-zinc-400 font-mono text-[10px] text-right">Traffic: {{ r.traffic }}<br>Sales: {{ r.sales }}</td>
                                 </tr>
                                 {% endfor %}
                             {% else %}
-                                <tr><td colspan="2" class="py-6 text-center text-zinc-400 italic text-xs">No operational logs recorded.</td></tr>
+                                <tr><td colspan="2" class="py-6 text-center text-zinc-400 italic text-xs">No intelligence arrays captured yet.</td></tr>
                             {% endif %}
                         </tbody>
                     </table>
@@ -166,95 +161,49 @@
 
         <div class="lg:col-span-2 space-y-6">
             
-            <div class="glass-panel metallic-border p-6 relative overflow-hidden flex flex-col h-[320px]">
-                <h3 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2">System Forensics Logs</h3>
+            <div class="glass-panel metallic-border p-6 relative overflow-hidden flex flex-col h-[280px]">
+                <h3 class="text-lg font-semibold mb-4 text-blue-300 border-b border-white/10 pb-2 flex justify-between items-center">
+                    Network Threat Matrix
+                    <span id="threat-badge" class="hidden text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-2 py-0.5 rounded font-mono animate-pulse">THREATS DETECTED</span>
+                </h3>
 
                 {% if user_tier == 'free' %}
                 <div class="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-10 p-6 md:p-12 text-center rounded-xl">
                     <svg class="w-12 h-12 text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2-2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                     <h2 class="text-2xl font-bold mb-2 text-white drop-shadow-md">ENTERPRISE FEATURE</h2>
-                    <p class="text-zinc-300 text-sm mb-6 max-w-md">Upgrade to connect the Dragon Agent. Unlock live PCAP inspection, Geo-Fraud mapping, and secure payload downloads.</p>
-                    
-                    <form action="/create-checkout-session" method="POST">
-                        <button type="submit" class="bg-blue-600/80 hover:bg-blue-500 border border-blue-400/50 text-white font-black px-6 py-3 rounded-lg shadow-lg backdrop-blur-md transition">
-                            Unlock Enterprise - $499
-                        </button>
-                    </form>
+                    <p class="text-zinc-300 text-sm mb-6 max-w-md">Upgrade to connect the Dragon Agent. Unlock live PCAP inspection, rogue device radar, and physical conversion rate tracking.</p>
                 </div>
                 {% endif %}
 
-                <div class="flex-1 font-mono text-xs text-green-400 space-y-1 overflow-y-auto bg-black/60 p-4 rounded-lg border border-white/10 shadow-inner" id="live-terminal">
-                    <p>[SYSTEM_BOOT] System initialized securely.</p>
-                    <p>[AUTH_VERIFIED] User {{ user_email }} authenticated.</p>
-                    <p>[SECURE_UPLINK] Establishing connection to Mothership...</p>
-                    <p class="animate-pulse text-zinc-400">[LISTENING] Awaiting agent data pulse...</p>
+                <div class="flex-1 font-mono text-xs space-y-1 overflow-y-auto bg-black/60 p-4 rounded-lg border border-white/10 shadow-inner" id="live-terminal">
+                    <p class="text-green-400">[SYSTEM_BOOT] Synergy Matrix initialized.</p>
+                    <p class="text-green-400">[AUTH_VERIFIED] Operative {{ user_email }} authenticated.</p>
+                    <p class="text-green-400">[SECURE_UPLINK] Listening for Dragon Agent telemetry...</p>
+                    <p class="animate-pulse text-zinc-400" id="terminal-waiting">[AWAITING_PULSE] Standing by...</p>
                 </div>
             </div>
 
-            <div id="resultsDisplay" class="hidden glass-panel rounded-xl p-6 relative">
-                
-                <div id="loadingOverlay" class="hidden absolute inset-0 bg-black/70 backdrop-blur-md z-10 rounded-xl flex flex-col items-center justify-center text-blue-400">
-                    <svg class="animate-spin h-12 w-12 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p class="font-bold tracking-wider animate-pulse text-sm">SYNCHRONIZING DATACUBE...</p>
-                </div>
-
-                <div class="flex justify-between items-start border-b border-white/10 pb-4">
-                    <div>
-                        <h3 class="text-xl font-bold text-white drop-shadow-md">Data Pulse Resolved</h3>
-                        <p class="text-zinc-300 text-xs mt-1">Target File: <span id="resFilename" class="text-blue-300 font-mono"></span> | Format: <span id="resFormat" class="text-blue-300 font-mono uppercase"></span></p>
-                    </div>
-                    <div class="flex space-x-2">
-                        <a id="downloadRawBtn" href="#" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded border border-white/20 transition flex items-center backdrop-blur-sm">
-                            <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            Raw
-                        </a>
-                        <span id="metricBadge" class="bg-blue-500/20 text-blue-200 px-3 py-1.5 rounded border border-blue-500/50 font-mono text-xs font-bold shadow-inner"></span>
-                    </div>
+            <div class="glass-panel rounded-xl p-6 relative">
+                <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                    <h4 class="text-sm uppercase tracking-widest text-blue-300 font-bold">Live Physical Conversion Rate</h4>
+                    <span class="text-[10px] font-mono text-zinc-400 border border-white/20 px-2 py-1 rounded">Foot Traffic vs POS Sales</span>
                 </div>
                 
-                <div class="pt-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <h4 class="text-xs uppercase tracking-widest text-blue-300 font-bold">Visualization Matrix</h4>
-                        <select id="chartTypeToggle" class="bg-black/50 border border-white/20 text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-400 backdrop-blur-sm">
-                            <option value="bar">Bar Chart</option>
-                            <option value="line">Line Chart</option>
-                            <option value="doughnut">Doughnut Chart</option>
-                        </select>
-                    </div>
-                    <div class="bg-black/40 p-4 rounded-lg border border-white/10 relative shadow-inner" style="height: 350px;">
-                        <canvas id="dataChart"></canvas>
-                        <div id="noChartMsg" class="hidden absolute inset-0 flex items-center justify-center text-zinc-400 text-xs font-mono">No numeric pairings detected in payload.</div>
-                    </div>
+                <div class="bg-black/40 p-4 rounded-lg border border-white/10 relative shadow-inner" style="height: 350px;">
+                    <canvas id="synergyChart"></canvas>
                 </div>
-
-                <div class="pt-6 mt-6 border-t border-white/10">
-                    <h4 class="text-xs uppercase tracking-widest text-blue-300 font-bold mb-4">Data Array Preview</h4>
-                    <div id="tableContainer" class="overflow-x-auto bg-black/40 rounded-lg border border-white/10 shadow-inner max-h-64 overflow-y-auto p-1"></div>
-                </div>
-            </div>
-            
-            <div id="emptyState" class="glass-panel border-2 border-dashed border-white/20 rounded-xl h-full flex flex-col items-center justify-center text-zinc-400 p-12 min-h-[400px]">
-                <svg class="h-16 w-16 mb-4 opacity-30 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <p class="font-medium text-lg text-white">Awaiting Intelligence Upload</p>
-                <p class="text-sm mt-1 text-center max-w-xs">Processed legacy ledgers or live agent data will visualize here.</p>
             </div>
         </div>
     </main>
 
     <script>
+        // --- MODAL LOGIC ---
         function closeProfileModal() {
             document.getElementById('profileModal').classList.add('hidden');
             const displayObj = document.getElementById('apiKeyDisplay');
             if(displayObj) displayObj.value = '';
-            
             const area = document.getElementById('keyDisplayArea');
             if(area) area.classList.add('hidden');
-            
             const btn = document.getElementById('genKeyBtn');
             if(btn) {
                 btn.innerText = 'Generate Enterprise API Key';
@@ -263,194 +212,124 @@
             }
         }
 
+        // --- DUAL-AXIS CHART INITIALIZATION ---
+        const ctx = document.getElementById('synergyChart').getContext('2d');
+        const synergyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Timestamps
+                datasets: [
+                    {
+                        label: 'Foot Traffic (Wi-Fi Probes)',
+                        data: [],
+                        borderColor: '#60a5fa', // Blue
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'POS Sales (Transactions)',
+                        data: [],
+                        borderColor: '#34d399', // Green
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: '#e2e8f0' } }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    y: { 
+                        type: 'linear', display: true, position: 'left',
+                        title: { display: true, text: 'Traffic Vol.', color: '#60a5fa' },
+                        ticks: { color: '#60a5fa' }, grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y1: {
+                        type: 'linear', display: true, position: 'right',
+                        title: { display: true, text: 'Sales Vol.', color: '#34d399' },
+                        ticks: { color: '#34d399' }, grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+
+        // Function to push live data to the graph
+        function updateLiveChart(timestamp, traffic, sales) {
+            // Keep graph from getting too squished (max 15 data points on screen)
+            if (synergyChart.data.labels.length >= 15) {
+                synergyChart.data.labels.shift();
+                synergyChart.data.datasets[0].data.shift();
+                synergyChart.data.datasets[1].data.shift();
+            }
+            
+            synergyChart.data.labels.push(timestamp);
+            synergyChart.data.datasets[0].data.push(traffic);
+            synergyChart.data.datasets[1].data.push(sales);
+            synergyChart.update();
+        }
+
+        // --- WEBSOCKETS LOGIC (LIVE FEED) ---
         const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const ws = new WebSocket(wsProtocol + window.location.host + '/ws/vitals');
         
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
+            const now = new Date().toISOString().replace('T', ' ').substring(11, 19); // HH:MM:SS
             
+            // 1. Update Command Center DOM
             const statusEl = document.getElementById('agent-status');
             statusEl.textContent = 'SECURE LINK ACTIVE';
             statusEl.className = 'text-green-400 font-mono font-bold text-xs border border-green-500/50 rounded px-2 py-0.5 bg-green-500/10';
 
-            const qps = data.qps || data.records_count || data.packets || data.traffic || "0";
-            document.getElementById('qps-display').textContent = qps;
+            document.getElementById('live-traffic').textContent = data.foot_traffic || 0;
+            document.getElementById('live-sales').textContent = data.sales || 0;
+            
+            // Format revenue safely
+            const rev = data.revenue ? parseFloat(data.revenue).toFixed(2) : "0.00";
+            document.getElementById('live-revenue').textContent = "$" + rev;
 
+            // 2. Update Live Graph
+            updateLiveChart(now, (data.foot_traffic || 0), (data.sales || 0));
+
+            // 3. Update Threat Terminal
             const terminal = document.getElementById('live-terminal');
-            if (terminal) {
-                const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
-                const logLine = document.createElement('p');
-                logLine.textContent = `[${now}] INBOUND DATA PULSE: ${qps} ROWS DETECTED`;
-                logLine.className = 'text-blue-300 font-bold';
-                terminal.appendChild(logLine);
-                terminal.scrollTop = terminal.scrollHeight;
+            const waiting = document.getElementById('terminal-waiting');
+            if (waiting) waiting.remove();
+
+            // Log the standard pulse
+            terminal.innerHTML += `<p class="text-blue-300">[${now}] SYNERGY PULSE: Packets ingested. Traffic: ${data.foot_traffic || 0} | Sales: ${data.sales || 0}</p>`;
+
+            // Check for explicit Network Flags (Anomalies/Threats)
+            if (data.network_flags && Array.isArray(data.network_flags) && data.network_flags.length > 0) {
+                document.getElementById('threat-badge').classList.remove('hidden');
+                
+                data.network_flags.forEach(flag => {
+                    let colorClass = flag.severity === 'HIGH' ? 'text-red-500 font-bold' : 'text-yellow-400';
+                    let source = flag.source_ip || flag.mac_vendor || 'Unknown Source';
+                    terminal.innerHTML += `<p class="${colorClass}">[${now}] ⚠️ ${flag.severity || 'ALERT'}: ${flag.flag_type || 'Anomaly'} | Source: ${source}</p>`;
+                });
             }
+            
+            // Auto-scroll terminal to bottom
+            terminal.scrollTop = terminal.scrollHeight;
         };
 
         ws.onclose = function() {
             const statusEl = document.getElementById('agent-status');
-            statusEl.textContent = 'CONNECTION LOST';
+            statusEl.textContent = 'LINK SEVERED';
             statusEl.className = 'text-red-400 font-mono font-bold text-xs border border-red-500/50 rounded px-2 py-0.5 bg-red-500/10';
         };
 
-        const fileInput = document.getElementById('fileInput');
-        const uploadPrompt = document.getElementById('uploadPrompt');
-        const uploadForm = document.getElementById('uploadForm');
-        const resultsDisplay = document.getElementById('resultsDisplay');
-        const emptyState = document.getElementById('emptyState');
-        const processBtn = document.getElementById('processBtn');
-        const chartTypeToggle = document.getElementById('chartTypeToggle');
-        const historyTable = document.getElementById('historyTable');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const downloadRawBtn = document.getElementById('downloadRawBtn');
-        
-        let currentChartData = null;
-
-        if (fileInput) {
-            fileInput.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    uploadPrompt.innerHTML = '<span class="text-blue-300 font-bold">' + this.files[0].name + '</span>';
-                }
-            });
-        }
-
-        function renderChart(type) {
-            if (!currentChartData) return;
-            if (window.myChart) { window.myChart.destroy(); }
-            
-            const ctx = document.getElementById('dataChart').getContext('2d');
-            const bgColors = type === 'doughnut' 
-                ? ['rgba(59, 130, 246, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(139, 92, 246, 0.8)', 'rgba(244, 63, 94, 0.8)', 'rgba(234, 179, 8, 0.8)', 'rgba(6, 182, 212, 0.8)']
-                : 'rgba(59, 130, 246, 0.6)';
-
-            window.myChart = new Chart(ctx, {
-                type: type,
-                data: {
-                    labels: currentChartData.labels,
-                    datasets: [{
-                        label: currentChartData.title,
-                        data: currentChartData.values,
-                        backgroundColor: bgColors,
-                        borderColor: type === 'line' ? '#60a5fa' : 'rgba(255,255,255,0.1)',
-                        borderWidth: 2,
-                        borderRadius: type === 'bar' ? 4 : 0,
-                        tension: 0.3,
-                        fill: type === 'line' ? {target: 'origin', below: 'rgba(59,130,246,0.1)'} : false
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    color: '#cbd5e1',
-                    plugins: { 
-                        legend: { display: type === 'doughnut', position: 'right', labels: { color: '#e2e8f0' } }
-                    },
-                    scales: type === 'doughnut' ? {} : { 
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } }, 
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } } 
-                    }
-                }
-            });
-        }
-
-        if(chartTypeToggle) {
-            chartTypeToggle.addEventListener('change', (e) => {
-                renderChart(e.target.value);
-            });
-        }
-
-        function populateCanvas(data) {
-            emptyState.classList.add('hidden');
-            document.getElementById('resFilename').innerText = data.ingestion_metadata.filename;
-            document.getElementById('resFormat').innerText = data.ingestion_metadata.format_detected;
-            document.getElementById('metricBadge').innerText = data.ingestion_metadata.total_records_processed + ' Rows';
-            document.getElementById('tableContainer').innerHTML = data.preview_html;
-            
-            if(downloadRawBtn) {
-                downloadRawBtn.href = '/download/' + data.ingestion_metadata.filename;
-            }
-            
-            if (data.chart_data) {
-                currentChartData = data.chart_data;
-                document.getElementById('noChartMsg').classList.add('hidden');
-                document.getElementById('dataChart').classList.remove('hidden');
-                renderChart(chartTypeToggle.value);
-            } else {
-                currentChartData = null;
-                if (window.myChart) { window.myChart.destroy(); }
-                document.getElementById('dataChart').classList.add('hidden');
-                document.getElementById('noChartMsg').classList.remove('hidden');
-            }
-            resultsDisplay.classList.remove('hidden');
-            resultsDisplay.classList.add('flex', 'flex-col');
-        }
-
-        async function loadHistoricalData(filename) {
-            emptyState.classList.add('hidden');
-            resultsDisplay.classList.remove('hidden');
-            resultsDisplay.classList.add('flex', 'flex-col');
-            loadingOverlay.classList.remove('hidden');
-            
-            try {
-                const response = await fetch('/api/load-ledger/' + filename);
-                const data = await response.json();
-                
-                if (response.ok) {
-                    populateCanvas(data);
-                } else {
-                    alert('Extraction failure: ' + (data.detail || 'Could not fetch from Database/S3'));
-                }
-            } catch (err) {
-                alert('Connection to backend infrastructure dropped.');
-            } finally {
-                loadingOverlay.classList.add('hidden');
-            }
-        }
-
-        if (uploadForm) {
-            uploadForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-                
-                processBtn.innerText = "Analyzing Array & Uploading...";
-                processBtn.classList.add("opacity-50", "cursor-not-allowed");
-
-                try {
-                    const response = await fetch('/upload-ledger', { method: 'POST', body: formData });
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        populateCanvas(data);
-
-                        if (historyTable.innerText.includes('No operational logs recorded.')) {
-                            historyTable.innerHTML = '';
-                        }
-                        const newRow = document.createElement('tr');
-                        newRow.className = "flex justify-between items-center bg-white/5 p-2 rounded border border-white/10 hover:bg-white/10 cursor-pointer transition group";
-                        newRow.onclick = () => loadHistoricalData(data.ingestion_metadata.filename);
-                        newRow.innerHTML = `
-                            <td class="max-w-[150px]">
-                                <span class="text-blue-200 font-mono text-xs truncate block group-hover:text-white transition" title="${data.ingestion_metadata.filename}">${data.ingestion_metadata.filename}</span>
-                            </td>
-                            <td class="text-white font-mono text-xs text-right">${data.ingestion_metadata.total_records_processed} <span class="text-zinc-400">rows</span></td>
-                        `;
-                        historyTable.prepend(newRow);
-
-                    } else {
-                        alert('Ingestion failure: ' + (data.detail || 'Unknown Error'));
-                    }
-                } catch (err) {
-                    alert('Connection to backend infrastructure dropped.');
-                } finally {
-                    processBtn.innerText = "Process Ledger";
-                    processBtn.classList.remove("opacity-50", "cursor-not-allowed");
-                    uploadPrompt.innerHTML = 'Browse or drag ledger here';
-                    fileInput.value = '';
-                }
-            });
-        }
-
+        // --- API KEY GENERATOR ---
         const genKeyBtn = document.getElementById('genKeyBtn');
         const keyDisplayArea = document.getElementById('keyDisplayArea');
         const apiKeyDisplay = document.getElementById('apiKeyDisplay');
@@ -464,10 +343,10 @@
 
                 try {
                     const response = await fetch('/api/users/generate-api-key', { method: 'POST' });
-                    const data = await response.json();
+                    const apiData = await response.json();
                     
-                    if (response.ok && data.success) {
-                        apiKeyDisplay.value = data.api_key;
+                    if (response.ok && apiData.success) {
+                        apiKeyDisplay.value = apiData.api_key;
                         keyDisplayArea.classList.remove('hidden');
                         genKeyBtn.innerText = "Key Generated (Click key to copy)";
                         genKeyBtn.className = 'w-full bg-white/10 text-white font-bold py-2 rounded-lg transition border border-white/20 text-sm';
@@ -479,7 +358,7 @@
                             genKeyBtn.className = 'w-full bg-green-600/80 text-white font-bold py-2 rounded-lg border border-green-400/50 transition shadow-lg text-sm';
                         };
                     } else {
-                        alert("Failed to generate key: " + (data.detail || "Database Error"));
+                        alert("Failed to generate key: " + (apiData.detail || "Database Error"));
                         closeProfileModal(); 
                     }
                 } catch (err) {
